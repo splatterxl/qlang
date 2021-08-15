@@ -1,10 +1,10 @@
-use crate::tokens::{Token, Keyword, BasicToken};
+use crate::tokens::{BasicToken, Keyword, Token};
 
 #[derive(Debug)]
 pub struct LexOutput {
     pub filename: String,
     pub original: String,
-    pub lexed: Vec<Token>
+    pub lexed: Vec<Token>,
 }
 
 pub struct LexProvider {
@@ -14,10 +14,7 @@ pub struct LexProvider {
 
 impl LexProvider {
     pub fn new(data: String, filename: String) -> Self {
-        Self {
-            data,
-            filename
-        }
+        Self { data, filename }
     }
 
     pub fn lex(self) -> LexOutput {
@@ -53,8 +50,8 @@ impl LexProvider {
                         name,
                         at: BasicToken {
                             line: line_number,
-                            at_char: 1
-                        }
+                            at_char: 1,
+                        },
                     }));
                 }
             }
@@ -63,7 +60,7 @@ impl LexProvider {
         LexOutput {
             filename: self.filename,
             lexed: out,
-            original: self.data
+            original: self.data,
         }
     }
 }

@@ -1,4 +1,8 @@
-use crate::{lexer::core::LexOutput, errors::{templates::Errors, Error}, tokens::Token};
+use crate::{
+    errors::{templates::Errors, Error},
+    lexer::core::LexOutput,
+    tokens::Token,
+};
 
 pub struct Parser {}
 
@@ -10,14 +14,12 @@ impl Parser {
             match token {
                 Token::UnknownKeyword(k) => {
                     errors.push(Errors::unknown_keyword(k.at.line, k.at.at_char, k.name))
-                },
+                }
                 _ => todo!(),
             }
         }
 
-        ParseOutput {
-            errors
-        }
+        ParseOutput { errors }
     }
 }
 

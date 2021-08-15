@@ -16,17 +16,16 @@ fn main() {
 }
 
 fn file(_path: &str) {
-
     let file_data = String::from("echo (\"Hello, World!\");");
 
     let mut file = File {
         data: file_data,
         filename: String::from("aaaaa.q"),
-        parsed: None
+        parsed: None,
     };
 
     match file.parse() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => {
             println!("\nAborting due to errors.");
             exit(1);
@@ -34,5 +33,4 @@ fn file(_path: &str) {
     }
 
     dbg!(&file);
-
 }

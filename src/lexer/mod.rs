@@ -2,14 +2,12 @@ pub mod core;
 
 /// A lexing provider.
 pub struct Lexer {
-  pub filename: String
+    pub filename: String,
 }
 
 impl Lexer {
     pub fn new(filename: String) -> Self {
-        Self {
-            filename
-        }
+        Self { filename }
     }
 
     /// Lex the provided `file`'s data.

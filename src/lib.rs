@@ -1,20 +1,23 @@
-pub mod lexer;
-pub mod tokens;
-pub mod parser;
 pub mod errors;
+pub mod lexer;
+pub mod parser;
+pub mod tokens;
 
 macro_rules! format_err {
     ($error: tt, $filename: tt) => {
-                println!("error at {}[{},{} ({})]: {}", $filename, $error.line, $error.at, {
-                    match &$error.symbol {
-                        None => {
-                            String::from("root")
-                        },
-                        Some(symbol) => {
-                            symbol.to_owned()
-                        }
-                    }
-                }, $error.message)
+        println!(
+            "error at {}[{},{} ({})]: {}",
+            $filename,
+            $error.line,
+            $error.at,
+            {
+                match &$error.symbol {
+                    None => String::from("root"),
+                    Some(symbol) => symbol.to_owned(),
+                }
+            },
+            $error.message
+        )
     };
 }
 
@@ -22,7 +25,7 @@ macro_rules! format_err {
 pub struct File {
     pub filename: String,
     pub data: String,
-    pub parsed: Option<parser::ParseOutput>
+    pub parsed: Option<parser::ParseOutput>,
 }
 
 impl File {
@@ -31,7 +34,6 @@ impl File {
         let mut lexer = lexer::Lexer::new(self.filename.clone());
 
         let output = lexer.lex(self.data.to_owned());
-
 
         let parsed = parser::Parser::parse(output);
         self.parsed = Some(parsed);
@@ -44,7 +46,6 @@ impl File {
             }
             Err(())
         } else {
-
             Ok(())
         }
     }

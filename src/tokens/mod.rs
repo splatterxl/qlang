@@ -9,7 +9,7 @@ pub enum Token {
 
     // arguments
     ArgumentBlock,
-    Argument
+    Argument,
 }
 
 impl Token {
@@ -22,18 +22,18 @@ impl Token {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Function {
     pub name: String,
-    pub body: Vec<Token>
+    pub body: Vec<Token>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BasicToken {
     pub line: usize,
     /// this *would* just be `char`, but Rust has that as a type already
-    pub at_char: usize
+    pub at_char: usize,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Keyword {
     pub at: BasicToken,
-    pub name: String
+    pub name: String,
 }

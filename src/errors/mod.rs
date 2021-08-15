@@ -5,5 +5,5 @@ pub struct Error {
     pub message: String,
     pub line: usize,
     pub at: usize,
-    pub symbol: Option<String>
+    pub symbol: Option<String>,
 }

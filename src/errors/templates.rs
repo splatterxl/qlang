@@ -8,7 +8,7 @@ impl Errors {
             line,
             at,
             message: format!("Keyword {} is unknown.", word),
-            symbol: None
+            symbol: None,
         }
     }
 }
