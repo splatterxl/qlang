@@ -15,8 +15,13 @@ impl Parser {
             }
         }
 
-        errors
+        ParseOutput {
+            errors
+        }
     }
 }
 
-pub type ParseOutput = Vec<Error>;
+#[derive(Debug)]
+pub struct ParseOutput {
+    pub errors: Vec<Error>,
+}
