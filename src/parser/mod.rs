@@ -1,0 +1,22 @@
+use crate::{lexer::core::LexOutput, errors::{templates::Errors, Error}, tokens::Token};
+
+pub struct Parser {}
+
+impl Parser {
+    pub fn parse(lexed: LexOutput) -> ParseOutput {
+        let mut errors = Vec::new();
+
+        for token in lexed.lexed {
+            match token {
+                Token::UnknownKeyword(k) => {
+                    errors.push(Errors::unknown_keyword(k.at.line, k.at.at_char, k.name))
+                },
+                _ => todo!(),
+            }
+        }
+
+        errors
+    }
+}
+
+pub type ParseOutput = Vec<Error>;
