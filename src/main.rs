@@ -16,7 +16,11 @@ fn main() {
 }
 
 fn file(_path: &str) {
-    let file_data = String::from("echo (\"Hello, World!\");");
+    let file_data = String::from(
+        "# aaaaaa \n\
+         echo (\"Hello, World!\");\n\
+         # uwu",
+    );
 
     let mut file = File {
         data: file_data,

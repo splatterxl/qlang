@@ -7,7 +7,7 @@ impl Errors {
         Error {
             line,
             at,
-            message: format!("Keyword {} is unknown.", word),
+            message: format!("keyword \"{}\" is unknown", word),
             symbol: None,
         }
     }

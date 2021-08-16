@@ -1,22 +1,25 @@
+use ansi_term::Style;
+
+pub(crate) mod colors;
 pub mod errors;
 pub mod lexer;
 pub mod parser;
 pub mod tokens;
 
+/// Format an [errors::Error] into a readable string.
 macro_rules! format_err {
-    ($error: tt, $filename: tt) => {
+    ($error: tt, $filename: tt, $data: tt, $line: tt) => {
         println!(
-            "error at {}[{},{} ({})]: {}",
+            "{} at {}[{},{}]: {}\n{}\t{}\n  \t{}{}",
+            colors::error(String::from("error")),
             $filename,
-            $error.line,
-            $error.at,
-            {
-                match &$error.symbol {
-                    None => String::from("root"),
-                    Some(symbol) => symbol.to_owned(),
-                }
-            },
-            $error.message
+            colors::number($error.line),
+            colors::number($error.at),
+            $error.message,
+            Style::new().dimmed().paint("at:"),
+            $data.split(|c| c == '\n').nth($line).unwrap(),
+            " ".repeat($error.at - 1),
+            colors::error(String::from("^"))
         )
     };
 }
@@ -31,6 +34,7 @@ pub struct File {
 impl File {
     pub fn parse(&mut self) -> Result<(), ()> {
         let filename = &self.filename;
+        let filedata = &self.data;
         let mut lexer = lexer::Lexer::new(self.filename.clone());
 
         let output = lexer.lex(self.data.to_owned());
@@ -42,7 +46,8 @@ impl File {
 
         if data.errors.len() != 0 {
             for error in &data.errors {
-                format_err!(error, filename)
+                let line = error.line - 1;
+                format_err!(error, filename, filedata, line)
             }
             Err(())
         } else {

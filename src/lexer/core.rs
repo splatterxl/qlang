@@ -38,21 +38,27 @@ impl LexProvider {
                 }
             });
 
-            let keyword = String::from(statement.nth(0).unwrap_or(""));
+            let keyword = statement.nth(0).unwrap_or("");
 
             if keyword == "" {
                 continue;
             }
 
             match keyword {
+                "#" => {
+                    // this is a comment.
+                    // lmao how ironic is that
+                    continue;
+                }
                 name => {
                     out.push(Token::UnknownKeyword(Keyword {
-                        name,
+                        name: String::from(name),
                         at: BasicToken {
                             line: line_number,
                             at_char: 1,
                         },
                     }));
+                    continue;
                 }
             }
         }
