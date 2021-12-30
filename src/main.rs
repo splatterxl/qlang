@@ -4,6 +4,9 @@ use std::process::exit;
 use clap::{App, Arg};
 
 mod lexer;
+mod parser;
+
+use parser::Parser;
 
 fn main() {
     let app = App::new("Qlang")
@@ -36,5 +39,5 @@ fn file(path: &str) {
         }
     }
 
-    dbg!(lexer::lex(contents));
+    dbg!(Parser::parse(contents));
 }
