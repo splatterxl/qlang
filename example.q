@@ -1,10 +1,5 @@
-import {
-  from "std" choose ("printf")
-}
+from "std" import (printf, os);
 
-do {
-  invoke "printf" {
-    // what
-    "Hello, World!"
-  }
-}
+'c'; // <-- that is a character. it can only be a single character.
+"aaaaa";
+0 + 0;
