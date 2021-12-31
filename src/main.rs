@@ -3,9 +3,9 @@ use std::process::exit;
 
 use clap::{App, Arg};
 
+mod errors;
 mod lexer;
 mod parser;
-mod ast;
 
 use parser::Parser;
 
@@ -29,7 +29,7 @@ fn file(path: &str) {
         }
     };
 
-    println!("Read file: {}", path);
+    println!("{} {}", errors::dim("read file"), errors::dim(path));
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
@@ -38,6 +38,10 @@ fn file(path: &str) {
             eprintln!("{}", e);
             exit(1);
         }
+    }
+
+    if !contents.ends_with("\n") {
+        contents.push('\n');
     }
 
     dbg!(Parser::parse(contents));
