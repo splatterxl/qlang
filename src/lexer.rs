@@ -14,19 +14,32 @@ impl Lexer {
         let mut lexer = Tokens::lexer(&mut self.raw);
         let mut line = 0usize;
         let mut column = 0;
+        let mut spanned = 0;
 
         let _ = column;
 
         while let Some(token) = lexer.next() {
-            if token.is_newline() {
-                line += 1;
-                column = 0;
+            spanned += lexer.span().end - spanned;
 
-                let _ = column;
+            if token.is_whitespace() {
+                let mut newlines = 0;
+
+                for char in token.get_whitespace().chars() {
+                    if char == '\n' {
+                        newlines += 1;
+                    }
+                }
+
+                if newlines > 0 {
+                    line += newlines;
+                    column = 0;
+                } else {
+                    column += spanned - lexer.span().start;
+                }
 
                 continue;
             } else {
-                column = lexer.span().start;
+                column = spanned - lexer.span().start;
             }
 
             vec.push(Token {
@@ -81,8 +94,8 @@ pub enum Tokens {
     Comma,
     #[token("=")]
     Equals,
-    #[regex("\r\n|\r|\n")]
-    Newline,
+    #[regex("\\s*", |lex| lex.slice().to_string())]
+    Whitespace(String),
 
     // Multi-char tokens
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
@@ -116,7 +129,7 @@ pub enum Tokens {
 
     // Others
     #[error]
-    #[regex(r"[ \t\n\r]*|//[^\n\r]*", logos::skip)]
+    #[regex("//.*", logos::skip)]
     Error,
 
     #[regex("[0-9]+[a-zA-Z_]")]
@@ -140,10 +153,17 @@ impl Tokens {
         }
     }
 
-    pub fn is_newline(&self) -> bool {
+    pub fn is_whitespace(&self) -> bool {
         match self {
-            Tokens::Newline => true,
+            Tokens::Whitespace(..) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_whitespace(&self) -> &str {
+        match self {
+            Tokens::Whitespace(s) => s,
+            _ => panic!("Not whitespace"),
         }
     }
 }

@@ -48,6 +48,7 @@ impl Parser {
         if syntax_errors.is_empty() {
             parser.ast
         } else {
+            dbg!(parser.ast);
             format_errs(raw, syntax_errors);
             std::process::exit(1);
         }
@@ -85,7 +86,11 @@ impl Parser {
                                 syntax_errors.push(Error::Syntax {
                                     lc: next.lc,
                                     code: line!(),
-                                    hints: vec![],
+                                    hints: vec![
+                                        "import statements must be followed by a string literal"
+                                            .to_string(),
+                                        "did you forget to add the library name?".to_string(),
+                                    ],
                                     message: "Expected string literal".to_string(),
                                     span: next.span,
                                 });
@@ -168,70 +173,14 @@ impl Parser {
                 Tokens::Semicolon => {}
                 Tokens::EOF => break,
 
-                // Arrays
-                Tokens::LSquare => {
-                    let mut elements = Vec::new();
-                    loop {
-                        let next = tokens[i].clone();
-
-                        match &next.token {
-                            Tokens::RSquare => break,
-                            Tokens::EOF => {
-                                syntax_errors.push(Error::Syntax {
-                                    lc: next.lc,
-                                    code: line!(),
-                                    hints: vec![],
-                                    message: "Unexpected end of file".to_string(),
-                                    span: next.span,
-                                });
-                                break;
-                            }
-                            val => {
-                                if val.is_value() {
-                                    elements.push(Parser::categorise_value(next));
-
-                                    i += 1;
-                                    let next = tokens[i].clone();
-
-                                    match &next.token {
-                                        Tokens::RSquare => break,
-                                        Tokens::Comma => {}
-                                        _ => {
-                                            syntax_errors.push(Error::Syntax {
-                                                lc: next.lc,
-                                                code: line!(),
-                                                hints: vec![],
-                                                message: "Expected Comma or RSquare".to_string(),
-                                                span: next.span,
-                                            });
-                                            break;
-                                        }
-                                    }
-                                } else {
-                                    syntax_errors.push(Error::Syntax {
-                                        lc: next.lc,
-                                        code: line!(),
-                                        hints: vec![],
-                                        message: "Expected value".to_string(),
-                                        span: next.span,
-                                    });
-                                    break;
-                                }
-                            }
-                        }
-
-                        i += 1;
-                    }
-
-                    ast.push(Node::Array { elements });
-                }
-
-                // Invalid tokens
                 Tokens::InvalidNumberAlpha => {
                     syntax_errors.push(Error::Syntax {
                         lc: token.lc,
                         code: line!(),
-                        hints: vec!["Identifiers can't start with a number".to_string()],
+                        hints: vec![
+                            "number literals can't have alphabetical characters in them!"
+                                .to_string(),
+                        ],
                         message: "Invalid number".to_string(),
                         span: token.span,
                     });

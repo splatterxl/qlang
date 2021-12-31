@@ -1,5 +1,5 @@
 use ansi_term::{
-    Colour::{Blue, Red, Yellow},
+    Colour::{Blue, Cyan, Red, Yellow},
     Style,
 };
 use logos::Span;
@@ -62,6 +62,12 @@ impl Error {
             Error::Syntax { lc, .. } => lc.1,
         }
     }
+
+    pub fn hints(&self) -> Vec<String> {
+        match self {
+            Error::Syntax { hints, .. } => hints.clone(),
+        }
+    }
 }
 
 pub fn dim(s: &str) -> String {
@@ -76,19 +82,37 @@ pub fn format_errs(raw: String, errors: Vec<Error>) {
         let code = err.code();
         let line = err.line();
         let column = err.column();
+        let hints = err.hints();
         let span = err.span();
 
         println!(
-            "{}: {} {}{}{}\n\t{}\t{}\n\t\t{}{}",
+            "{}: {} {}{}{}\n\t{} {}\t{}\n\t\t{}{}\n{}",
             Blue.paint("SyntaxError"),
             message,
             dim("["),
             Yellow.paint(code.to_string()),
             dim("]"),
-            dim("at:"),
+            dim((line + 1).to_string().as_str()),
+            dim("|"),
             &lines[line],
-            " ".repeat(column),
+            " ".repeat({
+                if column == 0 {
+                    column
+                } else {
+                    column - 1
+                }
+            }),
             Red.paint("^".repeat(span.end - span.start)),
+            {
+                if !hints.is_empty() {
+                    hints
+                        .iter()
+                        .map(|hint| format!("{} {}\n", Cyan.paint("hint:"), hint))
+                        .collect::<String>()
+                } else {
+                    String::new()
+                }
+            }
         );
     }
 }
