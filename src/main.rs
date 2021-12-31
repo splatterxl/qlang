@@ -5,6 +5,7 @@ use clap::{App, Arg};
 
 mod lexer;
 mod parser;
+mod ast;
 
 use parser::Parser;
 

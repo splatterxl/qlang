@@ -108,6 +108,15 @@ impl Parser {
         }
     }
 
+    pub fn operator(token: Token) -> Operator {
+        match token.token {
+            Tokens::Plus => Operator::Add,
+            Tokens::Minus => Operator::Sub,
+            Tokens::Star => Operator::Mul,
+            _ => panic!("invalid operator {:?}", token.token)
+        }
+    }
+
     pub fn parse(raw: String) -> Vec<Node> {
         let lexed = Lexer::new(raw.clone()).vec();
 
@@ -117,10 +126,11 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> Vec<Node> {
+        let mut i = 0;
+
         let tokens = &self.lexed;
         let mut ast = Vec::new();
-
-        let mut i = 0;
+        // TODO: syntax errors
 
         while i < tokens.len() {
             let token = tokens[i].clone();
@@ -185,7 +195,7 @@ impl Parser {
                     i += 1;
                     let next = tokens[i].clone();
 
-                    match next.token {
+                    match &next.token {
                         Tokens::Semicolon => {
                             if is_value {
                                 ast.push(Parser::categorise_value(token, i));
@@ -193,12 +203,12 @@ impl Parser {
                                 panic!("{:?} is not valid in this context", val);
                             }
                         }
-                        Tokens::Plus => {
+                        Tokens::Plus | Tokens::Minus | Tokens::Star => {
                             if is_value {
                                 i += 1;
-                                let next = tokens[i].clone();
+                                let rhs = tokens[i].clone();
 
-                                let right = match next.token {
+                                let right = match rhs.token {
                                     Tokens::Integer(value) => Node::Integer { value },
                                     Tokens::Float(value) => Node::Float { value },
                                     Tokens::String(value) => Node::String { value },
@@ -221,53 +231,10 @@ impl Parser {
                                 ast.push(Node::Expression {
                                     left: Box::new(Parser::categorise_value(token, i)),
                                     right: Box::new(right),
-                                    operator: Operator::Add,
+                                    operator: Parser::operator(next),
                                 });
                             }
                         }
-                        Tokens::Minus => {
-                            if is_value {
-                                i += 1;
-                                let next = tokens[i].clone();
-
-                                let right = match next.token {
-                                    Tokens::Integer(value) => Node::Integer { value },
-                                    Tokens::Float(value) => Node::Float { value },
-                                    Tokens::Identifier(value) => Node::Identifier { value },
-                                    Tokens::Null => Node::Null,
-                                    Tokens::Undefined => Node::Undefined,
-                                    _ => panic!("Expected value"),
-                                };
-
-                                ast.push(Node::Expression {
-                                    left: Box::new(Parser::categorise_value(token, i)),
-                                    right: Box::new(right),
-                                    operator: Operator::Sub,
-                                });
-                            }
-                        }
-                        Tokens::Star => {
-                            if is_value {
-                                i += 1;
-                                let next = tokens[i].clone();
-
-                                let right = match next.token {
-                                    Tokens::Integer(value) => Node::Integer { value },
-                                    Tokens::Float(value) => Node::Float { value },
-                                    Tokens::Identifier(value) => Node::Identifier { value },
-                                    Tokens::Null => Node::Null,
-                                    Tokens::Undefined => Node::Undefined,
-                                    _ => panic!("Expected value"),
-                                };
-
-                                ast.push(Node::Expression {
-                                    left: Box::new(Parser::categorise_value(token, i)),
-                                    right: Box::new(right),
-                                    operator: Operator::Mul,
-                                });
-                            }
-                        }
-
                         _ => {
                             panic!("Expected {:?}", Tokens::Semicolon);
                         }
