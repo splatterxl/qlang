@@ -12,16 +12,34 @@ impl Lexer {
     pub fn vec(&mut self) -> Vec<Token> {
         let mut vec = Vec::new();
         let mut lexer = Tokens::lexer(&mut self.raw);
-        while let Some(tokens) = lexer.next() {
+        let mut line = 0usize;
+        let mut column = 0;
+
+        let _ = column;
+
+        while let Some(token) = lexer.next() {
+            if token.is_newline() {
+                line += 1;
+                column = 0;
+
+                let _ = column;
+
+                continue;
+            } else {
+                column = lexer.span().start;
+            }
+
             vec.push(Token {
-                token: tokens,
+                token,
                 span: lexer.span(),
+                lc: (line, column),
             });
         }
 
         vec.push(Token {
             token: Tokens::EOF,
             span: 0..0,
+            lc: (0, 0),
         });
 
         vec
@@ -63,6 +81,8 @@ pub enum Tokens {
     Comma,
     #[token("=")]
     Equals,
+    #[regex("\r\n|\r|\n")]
+    Newline,
 
     // Multi-char tokens
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
@@ -99,6 +119,9 @@ pub enum Tokens {
     #[regex(r"[ \t\n\r]*|//[^\n\r]*", logos::skip)]
     Error,
 
+    #[regex("[0-9]+[a-zA-Z_]")]
+    InvalidNumberAlpha,
+
     EOF,
 }
 
@@ -117,9 +140,9 @@ impl Tokens {
         }
     }
 
-    pub fn is_keyword(&self) -> bool {
+    pub fn is_newline(&self) -> bool {
         match self {
-            Tokens::Import | Tokens::From => true,
+            Tokens::Newline => true,
             _ => false,
         }
     }
@@ -129,4 +152,5 @@ impl Tokens {
 pub struct Token {
     pub token: Tokens,
     pub span: Span,
+    pub lc: (usize, usize),
 }
