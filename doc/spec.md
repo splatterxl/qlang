@@ -6,4 +6,4 @@ Check [example.q][example] for a showcase of implemented syntax.
 - `Spanned<T>`
 
 <!-- links -->
-[example]: ./example.q
+[example]: ../example.q
