@@ -1,5 +1,5 @@
 use crate::{
-    errors::{format_errs, Error},
+    error::{errors::Errors, format_errs, Error},
     lexer::{Lexer, Token, Tokens},
 };
 
@@ -14,7 +14,7 @@ pub struct Parser {
 
 impl Parser {
     pub fn categorise_value(val: Token) -> Node {
-        match val.token {
+        match val.data {
             Tokens::Integer(value) => Node::Integer { value },
             Tokens::Float(value) => Node::Float { value },
             Tokens::String(value) => Node::String { value },
@@ -25,21 +25,23 @@ impl Parser {
             },
             Tokens::Null => Node::Null,
             Tokens::Undefined => Node::Undefined,
-            _ => panic!("Unrecognised value: {:?}", val.token),
+            _ => panic!("Unrecognised value: {:?}", val.data),
         }
     }
 
-    pub fn operator(token: Token) -> Operator {
-        match token.token {
+    pub fn operator(token: Tokens) -> Operator {
+        match token {
             Tokens::Plus => Operator::Add,
             Tokens::Minus => Operator::Sub,
             Tokens::Star => Operator::Mul,
-            _ => panic!("invalid operator {:?}", token.token),
+            _ => panic!("invalid operator {:?}", token),
         }
     }
 
     pub fn parse(raw: String) -> Vec<Node> {
         let lexed = Lexer::new(raw.clone()).vec();
+
+        dbg!(&lexed);
 
         let mut parser = Parser { lexed, ast: vec![] };
 
@@ -66,34 +68,21 @@ impl Parser {
         while i < tokens.len() {
             let token = tokens[i].clone();
 
-            match &token.token {
+            match &token.data {
                 Tokens::From => {
                     if i == tokens.len() - 1 {
-                        syntax_errors.push(Error::Syntax {
-                            lc: token.lc,
-                            code: line!(),
-                            hints: vec![],
-                            message: "Unexpected end of input".to_string(),
-                            span: token.span,
-                        });
+                        println!("error encountered ({})", line!());
+                        syntax_errors
+                            .push(Errors::unexpected_end_of_input(token.line, token.column));
                     } else {
                         i += 1;
                         let next = tokens[i].clone();
 
-                        let library = match next.token {
+                        let library = match next.data {
                             Tokens::String(library) => library,
                             _ => {
-                                syntax_errors.push(Error::Syntax {
-                                    lc: next.lc,
-                                    code: line!(),
-                                    hints: vec![
-                                        "import statements must be followed by a string literal"
-                                            .to_string(),
-                                        "did you forget to add the library name?".to_string(),
-                                    ],
-                                    message: "Expected string literal".to_string(),
-                                    span: next.span,
-                                });
+                                println!("error encountered ({})", line!());
+                                syntax_errors.push(Errors::import_no_lib(token.line, token.column));
                                 break;
                             }
                         };
@@ -101,37 +90,51 @@ impl Parser {
                         i += 1;
                         let next = tokens[i].clone();
 
-                        if next.token != Tokens::Import {
-                            syntax_errors.push(Error::Syntax {
-                                lc: next.lc,
-                                code: line!(),
-                                hints: vec![],
-                                message: "Expected import keyword".to_string(),
-                                span: next.span,
-                            });
-                            break;
+                        match next.data {
+                            Tokens::Import => {}
+                            Tokens::EOF => {
+                                println!("error encountered ({})", line!());
+                                syntax_errors.push(Errors::unexpected_end_of_input(
+                                    token.line,
+                                    token.column,
+                                ));
+                                break;
+                            }
+                            _ => {
+                                println!("error encountered ({})", line!());
+                                syntax_errors.push(Errors::unexpected_token(
+                                    "'import'",
+                                    next.data,
+                                    next.line,
+                                    next.column,
+                                ));
+                                break;
+                            }
                         }
 
                         i += 1;
                         let next = tokens[i].clone();
 
-                        match next.token {
-                            Tokens::RParen => {
+                        match next.data {
+                            Tokens::RParen | Tokens::RBrace => {
+                                println!("error encountered ({})", line!());
+                                syntax_errors
+                                    .push(Errors::curly_bracket_import(next.line, next.column));
+                                let errs = syntax_errors.len();
+
                                 let mut properties = Vec::new();
                                 loop {
                                     i += 1;
                                     let next = tokens[i].clone();
 
-                                    match next.token {
-                                        Tokens::LParen => break,
+                                    match next.data {
+                                        Tokens::LParen | Tokens::LBrace => break,
                                         Tokens::EOF => {
-                                            syntax_errors.push(Error::Syntax {
-                                                lc: next.lc,
-                                                code: line!(),
-                                                hints: vec![],
-                                                message: "Unexpected end of file".to_string(),
-                                                span: next.span,
-                                            });
+                                            println!("error encountered ({})", line!());
+                                            syntax_errors.push(Errors::unexpected_end_of_input(
+                                                token.line,
+                                                token.column,
+                                            ));
                                             break;
                                         }
                                         Tokens::Identifier(property) => {
@@ -139,17 +142,20 @@ impl Parser {
                                         }
                                         Tokens::Comma => {}
                                         _ => {
-                                            syntax_errors.push(Error::Syntax {
-                                                lc: next.lc,
-                                                code: line!(),
-                                                hints: vec![],
-                                                message: "Expected Identifier, Comma or LParen"
-                                                    .to_string(),
-                                                span: next.span,
-                                            });
+                                            println!("error encountered ({})", line!());
+                                            syntax_errors.push(Errors::unexpected_token(
+                                                "')' or an identifier",
+                                                next.data,
+                                                next.line,
+                                                next.column,
+                                            ));
                                             break;
                                         }
                                     }
+                                }
+
+                                if syntax_errors.len() > errs {
+                                    break;
                                 }
 
                                 ast.push(Node::Import {
@@ -157,33 +163,46 @@ impl Parser {
                                     properties,
                                 });
                             }
-                            _ => {
-                                syntax_errors.push(Error::Syntax {
-                                    lc: next.lc,
-                                    code: line!(),
-                                    hints: vec![],
-                                    message: "Expected RParen".to_string(),
-                                    span: next.span,
-                                });
+                            Tokens::EOF => {
+                                println!("error encountered ({})", line!());
+                                syntax_errors.push(Errors::unexpected_end_of_input(
+                                    token.line,
+                                    token.column,
+                                ));
+                                break;
+                            }
+                            tok => {
+                                println!("error encountered ({})", line!());
+                                syntax_errors.push(Errors::unexpected_token(
+                                    "'('",
+                                    tok,
+                                    next.line,
+                                    next.column,
+                                ));
                                 break;
                             }
                         };
                     }
                 }
+
+                Tokens::Import => {
+                    println!("error encountered ({})", line!());
+                    syntax_errors.push(Errors::import_out_of_statement(token.line, 0));
+                    break;
+                }
+
+                Tokens::RBrace | Tokens::LBrace | Tokens::RSquare | Tokens::LSquare => {
+                    println!("error encountered ({})", line!());
+                    syntax_errors.push(Errors::unimplemented_feature(token.line, token.column));
+                    break;
+                }
+
                 Tokens::Semicolon => {}
                 Tokens::EOF => break,
 
                 Tokens::InvalidNumberAlpha => {
-                    syntax_errors.push(Error::Syntax {
-                        lc: token.lc,
-                        code: line!(),
-                        hints: vec![
-                            "number literals can't have alphabetical characters in them!"
-                                .to_string(),
-                        ],
-                        message: "Invalid number".to_string(),
-                        span: token.span,
-                    });
+                    println!("error encountered ({})", line!());
+                    syntax_errors.push(Errors::invalid_number(token.line, token.column, token.end));
                 }
 
                 val => {
@@ -192,30 +211,33 @@ impl Parser {
                     i += 1;
                     let next = tokens[i].clone();
 
-                    match &next.token {
+                    match next.data {
                         Tokens::Semicolon => {
                             if is_value {
                                 ast.push(Parser::categorise_value(token));
                             } else {
-                                syntax_errors.push(Error::Syntax {
-                                    lc: token.lc,
-                                    code: line!(),
-                                    hints: vec![],
-                                    message: format!(
-                                        "{:?} is not valid in this context",
-                                        token.token
-                                    ),
-                                    span: token.span,
-                                });
+                                println!("error encountered ({})", line!());
+                                syntax_errors.push(Errors::unexpected_token(
+                                    "value",
+                                    token.data,
+                                    token.line,
+                                    token.column,
+                                ));
                                 continue;
                             }
+                        }
+                        Tokens::EOF => {
+                            println!("error encountered ({})", line!());
+                            syntax_errors
+                                .push(Errors::unexpected_end_of_input(token.line, token.column));
+                            break;
                         }
                         Tokens::Plus | Tokens::Minus | Tokens::Star => {
                             if is_value {
                                 i += 1;
                                 let rhs = tokens[i].clone();
 
-                                let right = match rhs.token {
+                                let right = match rhs.data {
                                     Tokens::Integer(value) => Node::Integer { value },
                                     Tokens::Float(value) => Node::Float { value },
                                     Tokens::String(value) => Node::String { value },
@@ -226,14 +248,14 @@ impl Parser {
                                     },
                                     Tokens::Null => Node::Null,
                                     Tokens::Undefined => Node::Undefined,
-                                    _ => {
-                                        syntax_errors.push(Error::Syntax {
-                                            lc: rhs.lc,
-                                            code: line!(),
-                                            hints: vec![],
-                                            message: "Expected value".to_string(),
-                                            span: rhs.span,
-                                        });
+                                    tok => {
+                                        println!("error encountered ({})", line!());
+                                        syntax_errors.push(Errors::unexpected_token(
+                                            "value",
+                                            tok,
+                                            token.line,
+                                            token.column,
+                                        ));
                                         break;
                                     }
                                 };
@@ -241,18 +263,17 @@ impl Parser {
                                 ast.push(Node::Expression {
                                     left: Box::new(Parser::categorise_value(token)),
                                     right: Box::new(right),
-                                    operator: Parser::operator(next),
+                                    operator: Parser::operator(next.data),
                                 });
                             }
                         }
-                        _ => {
-                            syntax_errors.push(Error::Syntax {
-                                lc: token.lc,
-                                code: line!(),
-                                hints: vec![],
-                                message: "Expected semicolon".to_string(),
-                                span: token.span,
-                            });
+                        tok => {
+                            println!("error encountered ({})", line!());
+                            syntax_errors.push(Errors::expected_semicolon(
+                                tok,
+                                next.line,
+                                next.column,
+                            ));
                             break;
                         }
                     }

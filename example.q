@@ -1,6 +1,3 @@
-from "std" import (printf, os);
+from "std" import { printf };
 
-'c'; // comment
-"aaa";
 0;
-0 - 0;

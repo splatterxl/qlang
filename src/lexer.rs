@@ -1,4 +1,12 @@
-use logos::{Logos, Span};
+use logos::Logos;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Spanned<T> {
+    pub line: u32,
+    pub column: u32,
+    pub end: u32,
+    pub data: T,
+}
 
 pub struct Lexer {
     raw: String,
@@ -12,14 +20,13 @@ impl Lexer {
     pub fn vec(&mut self) -> Vec<Token> {
         let mut vec = Vec::new();
         let mut lexer = Tokens::lexer(&mut self.raw);
-        let mut line = 0usize;
+        let mut line = 0;
         let mut column = 0;
-        let mut spanned = 0;
 
         let _ = column;
 
         while let Some(token) = lexer.next() {
-            spanned += lexer.span().end - spanned;
+            column += lexer.slice().len() as u32;
 
             if token.is_whitespace() {
                 let mut newlines = 0;
@@ -33,26 +40,24 @@ impl Lexer {
                 if newlines > 0 {
                     line += newlines;
                     column = 0;
-                } else {
-                    column += spanned - lexer.span().start;
                 }
-
                 continue;
             } else {
-                column = spanned - lexer.span().start;
             }
 
             vec.push(Token {
-                token,
-                span: lexer.span(),
-                lc: (line, column),
+                line,
+                data: token,
+                column: column as u32,
+                end: column as u32 + lexer.slice().len() as u32,
             });
         }
 
         vec.push(Token {
-            token: Tokens::EOF,
-            span: 0..0,
-            lc: (0, 0),
+            data: Tokens::EOF,
+            line,
+            column: column as u32,
+            end: column as u32 + lexer.slice().len() as u32,
         });
 
         vec
@@ -127,6 +132,9 @@ pub enum Tokens {
     #[token("undefined")]
     Undefined,
 
+    #[regex("function", |lex| lex.slice().to_string())]
+    ReservedKeyword(String),
+
     // Others
     #[error]
     #[regex("//.*", logos::skip)]
@@ -168,9 +176,4 @@ impl Tokens {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct Token {
-    pub token: Tokens,
-    pub span: Span,
-    pub lc: (usize, usize),
-}
+pub type Token = Spanned<Tokens>;

@@ -4,6 +4,11 @@ use ansi_term::{
 };
 use logos::Span;
 
+use crate::error::codes::UNEXPECTED_END_OF_INPUT;
+
+pub mod codes;
+pub mod errors;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Syntax {
@@ -11,25 +16,19 @@ pub enum Error {
         span: Span,
         hints: Vec<String>,
         code: u32,
-        lc: (usize, usize),
+        lc: (u32, u32),
     },
 }
 
 #[allow(dead_code)]
 impl Error {
-    pub fn new(
-        message: String,
-        span: Span,
-        hints: Vec<String>,
-        code: u32,
-        lc: (usize, usize),
-    ) -> Self {
+    pub fn new(message: String, span: Span, hints: Vec<String>, code: u32, lc: (u32, u32)) -> Self {
         Error::Syntax {
             message,
             span,
             hints,
             code,
-            lc: lc,
+            lc,
         }
     }
 
@@ -51,13 +50,13 @@ impl Error {
         }
     }
 
-    pub fn line(&self) -> usize {
+    pub fn line(&self) -> u32 {
         match self {
             Error::Syntax { lc, .. } => lc.0,
         }
     }
 
-    pub fn column(&self) -> usize {
+    pub fn column(&self) -> u32 {
         match self {
             Error::Syntax { lc, .. } => lc.1,
         }
@@ -94,15 +93,23 @@ pub fn format_errs(raw: String, errors: Vec<Error>) {
             dim("]"),
             dim((line + 1).to_string().as_str()),
             dim("|"),
-            &lines[line],
+            &lines[line as usize],
             " ".repeat({
-                if column == 0 {
-                    column
+                if code == UNEXPECTED_END_OF_INPUT {
+                    lines[line as usize].len()
+                } else if column == 0 {
+                    column as usize
                 } else {
-                    column - 1
+                    (column - 1) as usize
                 }
             }),
-            Red.paint("^".repeat(span.end - span.start)),
+            Red.paint("^".repeat({
+                if span.end - span.start == 0 {
+                    1
+                } else {
+                    span.end - span.start
+                }
+            })),
             {
                 if !hints.is_empty() {
                     hints

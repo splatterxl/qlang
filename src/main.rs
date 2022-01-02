@@ -3,7 +3,7 @@ use std::process::exit;
 
 use clap::{App, Arg};
 
-mod errors;
+mod error;
 mod lexer;
 mod parser;
 
@@ -29,7 +29,7 @@ fn file(path: &str) {
         }
     };
 
-    println!("{} {}", errors::dim("read file"), errors::dim(path));
+    println!("{} {}", error::dim("read file"), error::dim(path));
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
