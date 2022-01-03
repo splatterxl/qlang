@@ -82,17 +82,17 @@ pub enum Tokens {
     #[token("^")]
     Caret,
     #[token("(")]
-    RParen,
+    OpenParen,
     #[token(")")]
-    LParen,
+    CloseParen,
     #[token("{")]
-    RBrace,
+    OpenBrace,
     #[token("}")]
-    LBrace,
+    CloseBrace,
     #[token("[")]
-    RSquare,
+    OpenSquare,
     #[token("]")]
-    LSquare,
+    CloseSquare,
     #[token(";")]
     Semicolon,
     #[token(",")]
@@ -125,6 +125,8 @@ pub enum Tokens {
     Import,
     #[token("from")]
     From,
+    #[token("choose")]
+    Choose,
     #[regex("true|false", |lex| lex.slice().parse::<bool>().unwrap())]
     Boolean(bool),
     #[token("null")]

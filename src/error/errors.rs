@@ -4,7 +4,7 @@ use crate::lexer::Tokens;
 
 use super::{
     codes::{
-        EXPECTED_SEMICOLON, IMPORT_NO_LIB, IMPORT_OUT_OF_STATEMENT, INVALID_NUMBER,
+        EXPECTED_SEMICOLON, IMPORT_NO_LIB, IMPORT_KEYWORD, INVALID_NUMBER,
         UNEXPECTED_END_OF_INPUT, UNEXPECTED_TOKEN, UNIMPLEMENTED_FEATURE,
     },
     Error,
@@ -43,14 +43,13 @@ impl Errors {
             .lc((line, column))
             .build()
     }
-    pub fn import_out_of_statement(line: u32, column: u32) -> Error {
+    pub fn import_keyword(line: u32, column: u32) -> Error {
         SyntaxErrorBuilder::new()
-            .message("Import keyword used outside of import statement".to_string())
-            .code(IMPORT_OUT_OF_STATEMENT)
+            .message("Unknown keyword".to_string())
+            .code(IMPORT_KEYWORD)
             .lc((line, column))
             .hints(vec![
-                "imports in Qlang work a bit like in Python; `from \"<library>\" import...`"
-                    .to_string(),
+                "imports in Qlang work strangely, see the documentation for more info".to_string(),
             ])
             .build()
     }

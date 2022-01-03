@@ -91,7 +91,7 @@ impl Parser {
                         let next = tokens[i].clone();
 
                         match next.data {
-                            Tokens::Import => {}
+                            Tokens::Choose => {}
                             Tokens::EOF => {
                                 println!("error encountered ({})", line!());
                                 syntax_errors.push(Errors::unexpected_end_of_input(
@@ -103,7 +103,7 @@ impl Parser {
                             _ => {
                                 println!("error encountered ({})", line!());
                                 syntax_errors.push(Errors::unexpected_token(
-                                    "'import'",
+                                    "'choose'",
                                     next.data,
                                     next.line,
                                     next.column,
@@ -116,10 +116,12 @@ impl Parser {
                         let next = tokens[i].clone();
 
                         match next.data {
-                            Tokens::RParen | Tokens::RBrace => {
-                                println!("error encountered ({})", line!());
-                                syntax_errors
-                                    .push(Errors::curly_bracket_import(next.line, next.column));
+                            Tokens::OpenParen | Tokens::OpenBrace => {
+                                if next.data == Tokens::OpenBrace {
+                                    println!("error encountered ({})", line!());
+                                    syntax_errors
+                                        .push(Errors::curly_bracket_import(next.line, next.column));
+                                }
                                 let errs = syntax_errors.len();
 
                                 let mut properties = Vec::new();
@@ -128,7 +130,7 @@ impl Parser {
                                     let next = tokens[i].clone();
 
                                     match next.data {
-                                        Tokens::LParen | Tokens::LBrace => break,
+                                        Tokens::CloseParen | Tokens::CloseBrace => break,
                                         Tokens::EOF => {
                                             println!("error encountered ({})", line!());
                                             syntax_errors.push(Errors::unexpected_end_of_input(
@@ -187,11 +189,14 @@ impl Parser {
 
                 Tokens::Import => {
                     println!("error encountered ({})", line!());
-                    syntax_errors.push(Errors::import_out_of_statement(token.line, 0));
+                    syntax_errors.push(Errors::import_keyword(token.line, token.column));
                     break;
                 }
 
-                Tokens::RBrace | Tokens::LBrace | Tokens::RSquare | Tokens::LSquare => {
+                Tokens::OpenBrace
+                | Tokens::CloseBrace
+                | Tokens::OpenSquare
+                | Tokens::CloseSquare => {
                     println!("error encountered ({})", line!());
                     syntax_errors.push(Errors::unimplemented_feature(token.line, token.column));
                     break;
