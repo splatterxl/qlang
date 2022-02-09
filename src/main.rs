@@ -4,6 +4,7 @@ use std::process::exit;
 
 mod lexer;
 mod parser;
+mod ast;
 
 use parser::Parser;
 
@@ -20,7 +21,7 @@ fn file(path: &str) {
         }
     };
 
-    println!("{} {}", error::dim("read file"), error::dim(path));
+    println!("read file {}", path);
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {

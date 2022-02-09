@@ -1,12 +1,5 @@
-use logos::Logos;
+use logos::{Logos, Span};
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Spanned<T> {
-    pub line: u32,
-    pub column: u32,
-    pub end: u32,
-    pub data: T,
-}
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Tokens {
@@ -43,8 +36,6 @@ pub enum Tokens {
     Comma,
     #[token("=")]
     Equals,
-    #[regex("\\s*", |lex| lex.slice().to_string())]
-    Whitespace(String),
 
     // Multi-char tokens
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| Slice(lex.span()))]
@@ -76,12 +67,10 @@ pub enum Tokens {
     #[token("const")]
     Const,
 
-    #[regex("function", |lex| lex.slice().to_string())]
-    ReservedKeyword(String),
-
     // Others
     #[error]
     #[regex("//.*", logos::skip)]
+    #[regex("\\s*", logos::skip)]
     Error,
 }
 

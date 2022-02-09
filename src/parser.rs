@@ -1,4 +1,4 @@
-use logos::{Lexer, Logos};
+use logos::{Logos, Lexer};
 
 use crate::{ast::{Expression, ImportMember, TopLevel, Value, Node}, lexer::Tokens};
 
@@ -33,7 +33,7 @@ impl Parser {
     }
 
     pub fn parse_expression(start_token: Tokens, lexer: &mut Lexer<Tokens>) -> Expression {
-        let expr = match start_token {
+        match start_token {
             Tokens::Import => {
                 let members = match lexer.next().expect("import followed by eof") {
                     Tokens::Identifier(name) => {
@@ -73,7 +73,11 @@ impl Parser {
                 if let Some(Tokens::From) = lexer.next() {
                     Expression::Import {
                         path: if let Some(Tokens::String(slice)) = lexer.next() {
+                            if let Some(Tokens::Semicolon) = lexer.next() {
                                 slice.trim()
+                            } else {
+                                panic!("unexpected token after import expr")
+                            }
                         } else { 
                             panic!("unexpected token in import statement after From")
                         },
@@ -92,7 +96,7 @@ impl Parser {
 
                         Expression::ConstDeclaration {
                             name: Value::Identifier(name),
-                            value: Box::new(Parser::parse_value_or_func_call(lexer.next().expect("unexpected eof"), lexer))
+                            value: Box::new(Parser::parse_value(lexer.next().expect("unexpected eof"), lexer))
                         }
                     }
                     _ => panic!("unexpected identifier after const declaration")
@@ -101,43 +105,22 @@ impl Parser {
             start_token => {
                 panic!("Unexpected token: {:?}", start_token)
             }
-        };
-
-
-        dbg!(&expr);
-        if dbg!(lexer.peekable().peek().expect("unexpected eof")) != &Tokens::Semicolon {
-            panic!("Expected semicolon")
         }
-
-        expr
     }
 
-    pub fn parse_value_or_func_call(start_token: Tokens, lexer: &mut Lexer<Tokens>) -> Node {
-        match start_token {
-            Tokens::Identifier(_) => { 
-                match lexer.peekable().peek().expect("unexpected eof") {
-                    Tokens::LParen => {
-                        Parser::parse_function(start_token, true, lexer)
-                    }
-                    _ => {
-                        Parser::parse_value(start_token, lexer).into_node()
-                    }
+    pub fn parse_value(start_token: Tokens, lexer: &mut Lexer<Tokens>) -> Node {
+        match start_token.clone() {
+            Tokens::String(slice) => Value::String(slice).into_node(),
+            Tokens::Char(c) => Value::Char(c).into_node(),
+            Tokens::Integer(i) => Value::Integer(i).into_node(),
+            Tokens::Float(f) => Value::Float(f).into_node(),
+            Tokens::Identifier(id) => {
+                match lexer.next().expect("unexpected eof") {
+                    Tokens::LParen => Parser::parse_function(start_token, true, lexer),
+                    _ => Value::Identifier(id).into_node(),
                 }
-            }
-            _ => {
-                Parser::parse_value(start_token, lexer).into_node()
-            }
-        }
-    }
-
-    pub fn parse_value(start_token: Tokens, lexer: &mut Lexer<Tokens>) -> Value {
-        match start_token {
-            Tokens::String(slice) => Value::String(slice),
-            Tokens::Char(c) => Value::Char(c),
-            Tokens::Integer(i) => Value::Integer(i),
-            Tokens::Float(f) => Value::Float(f),
-            Tokens::Identifier(id) => Value::Identifier(id),
-            Tokens::Atom(slice) => Value::Atom(slice),
+            },
+            Tokens::Atom(slice) => Value::Atom(slice).into_node(),
 
             _ => panic!("unknown value")
         }
