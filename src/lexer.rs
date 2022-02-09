@@ -1,6 +1,5 @@
 use logos::{Logos, Span};
 
-
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Tokens {
     // Single-char tokens

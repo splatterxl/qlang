@@ -2,14 +2,19 @@ use std::env::args_os;
 use std::io::Read;
 use std::process::exit;
 
+mod ast;
 mod lexer;
 mod parser;
-mod ast;
 
 use parser::Parser;
 
 fn main() {
-    file(&args_os().nth(1).expect("file argument must be passed").to_string_lossy());
+    file(
+        &args_os()
+            .nth(1)
+            .expect("file argument must be passed")
+            .to_string_lossy(),
+    );
 }
 
 fn file(path: &str) {
