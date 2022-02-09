@@ -8,62 +8,6 @@ pub struct Spanned<T> {
     pub data: T,
 }
 
-pub struct Lexer {
-    raw: String,
-}
-
-impl Lexer {
-    pub fn new(code: String) -> Self {
-        Lexer { raw: code }
-    }
-
-    pub fn vec(&mut self) -> Vec<Token> {
-        let mut vec = Vec::new();
-        let mut lexer = Tokens::lexer(&mut self.raw);
-        let mut line = 0;
-        let mut column = 0;
-
-        let _ = column;
-
-        while let Some(token) = lexer.next() {
-            column += lexer.slice().len() as u32;
-
-            if token.is_whitespace() {
-                let mut newlines = 0;
-
-                for char in token.get_whitespace().chars() {
-                    if char == '\n' {
-                        newlines += 1;
-                    }
-                }
-
-                if newlines > 0 {
-                    line += newlines;
-                    column = 0;
-                }
-                continue;
-            } else {
-            }
-
-            vec.push(Token {
-                line,
-                data: token,
-                column: column as u32,
-                end: column as u32 + lexer.slice().len() as u32,
-            });
-        }
-
-        vec.push(Token {
-            data: Tokens::EOF,
-            line,
-            column: column as u32,
-            end: column as u32 + lexer.slice().len() as u32,
-        });
-
-        vec
-    }
-}
-
 #[derive(Logos, Debug, PartialEq, Clone)]
 pub enum Tokens {
     // Single-char tokens
@@ -82,17 +26,17 @@ pub enum Tokens {
     #[token("^")]
     Caret,
     #[token("(")]
-    OpenParen,
+    LParen,
     #[token(")")]
-    CloseParen,
+    RParen,
     #[token("{")]
-    OpenBrace,
+    LBrace,
     #[token("}")]
-    CloseBrace,
+    RBrace,
     #[token("[")]
-    OpenSquare,
+    LSquare,
     #[token("]")]
-    CloseSquare,
+    RSquare,
     #[token(";")]
     Semicolon,
     #[token(",")]
@@ -103,22 +47,18 @@ pub enum Tokens {
     Whitespace(String),
 
     // Multi-char tokens
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
-    Identifier(String),
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| Slice(lex.span()))]
+    Identifier(Slice),
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i32>().unwrap())]
     Integer(i32),
     #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice().parse::<f32>().unwrap())]
     Float(f32),
-    #[regex(r"'[^']*'", |lex| {
-        let s = lex.slice();
-        s[1..s.len() - 1].to_string()
-    })]
-    Char(String),
-    #[regex("\"(?:\\.|[^\"])*\"", |lex| {
-        let s = lex.slice();
-        s[1..s.len() - 1].to_string()
-    })]
-    String(String),
+    #[regex(r"'[^']*'", |lex| lex.slice().parse::<char>().unwrap())]
+    Char(char),
+    #[regex("\"(?:\\.|[^\"])*\"", |lex| Slice(lex.span()))]
+    String(Slice),
+    #[regex(r":[a-zA-Z_]+", |lex| Slice(lex.span()))]
+    Atom(Slice),
 
     // Keywords
     #[token("import")]
@@ -133,6 +73,8 @@ pub enum Tokens {
     Null,
     #[token("undefined")]
     Undefined,
+    #[token("const")]
+    Const,
 
     #[regex("function", |lex| lex.slice().to_string())]
     ReservedKeyword(String),
@@ -141,41 +83,16 @@ pub enum Tokens {
     #[error]
     #[regex("//.*", logos::skip)]
     Error,
-
-    #[regex("[0-9]+[a-zA-Z_]")]
-    InvalidNumberAlpha,
-
-    EOF,
 }
 
-impl Tokens {
-    pub fn is_value(&self) -> bool {
-        match self {
-            Tokens::Integer(_)
-            | Tokens::Float(_)
-            | Tokens::String(_)
-            | Tokens::Identifier(_)
-            | Tokens::Boolean(_)
-            | Tokens::Char(_)
-            | Tokens::Null
-            | Tokens::Undefined => true,
-            _ => false,
-        }
-    }
+#[derive(Debug, PartialEq, Clone)]
+pub struct Slice(pub Span);
 
-    pub fn is_whitespace(&self) -> bool {
-        match self {
-            Tokens::Whitespace(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn get_whitespace(&self) -> &str {
-        match self {
-            Tokens::Whitespace(s) => s,
-            _ => panic!("Not whitespace"),
-        }
+impl Slice {
+    pub fn trim(self) -> Self {
+        Self(Span {
+            start: self.0.start + 1,
+            end: self.0.end - 1,
+        })
     }
 }
-
-pub type Token = Spanned<Tokens>;

@@ -1,23 +1,14 @@
+use std::env::args_os;
 use std::io::Read;
 use std::process::exit;
 
-use clap::{App, Arg};
-
-mod error;
 mod lexer;
 mod parser;
 
 use parser::Parser;
 
 fn main() {
-    let app = App::new("Qlang")
-        .version(env!("CARGO_PKG_VERSION"))
-        .author("Splatterxl <splatterxl@outlook.ie>")
-        .arg(Arg::with_name("file").index(1).required(true));
-
-    let params = app.get_matches();
-
-    file(params.value_of("file").unwrap());
+    file(&args_os().nth(1).expect("file argument must be passed").to_string_lossy());
 }
 
 fn file(path: &str) {
@@ -40,9 +31,8 @@ fn file(path: &str) {
         }
     }
 
-    if !contents.ends_with("\n") {
-        contents.push('\n');
-    }
-
+    let now = std::time::Instant::now();
     dbg!(Parser::parse(contents));
+    let elapsed = now.elapsed().as_micros();
+    println!("{elapsed} micros")
 }
