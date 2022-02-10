@@ -1,26 +1,67 @@
+<<<<<<< HEAD
 use logos::{Lexer, Logos};
+=======
+use std::iter::Peekable;
+
+use logos::{Logos, Lexer, Span};
+>>>>>>> 4a93263 (refactor: move lexer and current token values into instance)
 
 use crate::{
     ast::{Expression, ImportMember, Node, TopLevel, Value},
     lexer::Tokens,
 };
 
-pub struct Parser;
+pub trait Parse {
+    fn parse(self) -> TopLevel;
+}
 
-impl Parser {
-    pub fn parse(raw: String) -> TopLevel {
-        let mut lexer = Tokens::lexer(&raw);
+impl Parse for String {
+    fn parse(self) -> TopLevel {
+        let mut parser = Parser::new(&self);
+        parser.parse()
+    }
+}
+
+impl Parse for &str {
+    fn parse(self) -> TopLevel {
+        let mut parser = Parser::new(self);
+        parser.parse()
+    }
+}
+
+pub struct Parser<'a> {
+    raw: &'a str,
+    lexer: Lexer<'a, Tokens>,
+    current_token: Tokens,
+}
+
+impl<'a> Parser<'a> {
+    pub fn new(raw: &'a str) -> Self {
+        Self {
+            raw,
+            lexer: Tokens::lexer(&raw),
+            current_token: Tokens::Error,
+        }
+    }
+
+    pub fn parse(mut self) -> TopLevel {
         let mut top_level = TopLevel {
-            imports: Vec::new(),
             consts: Vec::new(),
+            imports: Vec::new(),
         };
 
-        while let Some(token) = lexer.next() {
+        while let Some(token) = self.next() {
             match token {
                 Tokens::Semicolon => {}
-                token => match Parser::parse_expression(token, &mut lexer) {
-                    Expression::Import { path, members } => {
-                        top_level.imports.push(Expression::Import { path, members });
+                token => {
+                    match self.parse_expression() {
+                        Expression::Import { path, members } => {
+                            top_level.imports.push(Expression::Import { path, members });
+                        }
+                        Expression::ConstDeclaration { name, value } => {
+                            top_level.consts.push(Expression::ConstDeclaration { name, value })
+                        }
+                        _ => panic!("invalid expression returned")
                     }
                     Expression::ConstDeclaration { name, value } => top_level
                         .consts
@@ -33,20 +74,39 @@ impl Parser {
         top_level
     }
 
-    pub fn parse_expression(start_token: Tokens, lexer: &mut Lexer<Tokens>) -> Expression {
-        match start_token {
+    fn next(&mut self) -> Option<Tokens> {
+        let next = self.lexer.next();
+
+        match next {
+            Some(token) => {
+                self.current_token = token;
+
+                Some(self.current_token.clone())
+            },
+            None => None
+        }
+    }
+
+    fn next_force(&mut self) -> Tokens {
+        self.next().expect("unexpected eof")
+    }
+
+    pub fn parse_expression(&mut self) -> Expression {
+        match self.current_token {
             Tokens::Import => {
-                let members = match lexer.next().expect("import followed by eof") {
-                    Tokens::Identifier(name) => ImportMember::All(name),
+                let members = match self.next().expect("import followed by eof") {
+                    Tokens::Identifier(name) => {
+                        ImportMember::All(name)
+                    }
                     Tokens::LParen => {
                         let mut members = Vec::new();
 
-                        while let Some(next) = lexer.next() {
+                        while let Some(next) = self.lexer.next() {
                             match next {
                                 Tokens::Identifier(slice) => {
                                     members.push(Value::Identifier(slice));
 
-                                    match lexer.next().expect("unexpected eof") {
+                                    match self.lexer.next().expect("unexpected eof") {
                                         Tokens::Comma => {}
                                         Tokens::RParen => {
                                             break;
@@ -67,14 +127,16 @@ impl Parser {
 
                         ImportMember::Named(members)
                     }
-                    Tokens::Star => ImportMember::AllDestructured,
-                    token => panic!("unexpected token {:?} after {:?}", token, start_token),
+                    Tokens::Star => {
+                        ImportMember::AllDestructured
+                    }
+                    token => panic!("unexpected token {:?} after {:?}", token, self.current_token),
                 };
 
-                if let Some(Tokens::From) = lexer.next() {
+                if let Tokens::From = self.next_force() {
                     Expression::Import {
-                        path: if let Some(Tokens::String(slice)) = lexer.next() {
-                            if let Some(Tokens::Semicolon) = lexer.next() {
+                        path: if let Tokens::String(slice) = self.next_force() {
+                            if let Tokens::Semicolon = self.next_force() {
                                 slice.trim()
                             } else {
                                 panic!("unexpected token after import expr")
@@ -88,49 +150,44 @@ impl Parser {
                     panic!("eof after import member list")
                 }
             }
-            Tokens::Const => match lexer.next().expect("unexpected eof") {
-                Tokens::Identifier(name) => {
-                    if lexer.next().expect("unexpected eof") != Tokens::Equals {
-                        panic!("unexpected identifier after const identifier");
-                    }
+            Tokens::Const => {
+                match self.next_force() {
+                    Tokens::Identifier(name) => {
+                        if self.next_force() != Tokens::Equals {
+                            panic!("unexpected identifier after const identifier");
+                        }
 
-                    Expression::ConstDeclaration {
-                        name: Value::Identifier(name),
-                        value: Box::new(Parser::parse_value(
-                            lexer.next().expect("unexpected eof"),
-                            lexer,
-                        )),
+                        let expr = Expression::ConstDeclaration {
+                            name: Value::Identifier(name),
+                            value: Box::new(self.parse_value())
+                        };
+
+                        if self.next_force() != Tokens::Semicolon {
+                            panic!("unexpected identifier")
+                        } else {
+                            expr
+                        }
                     }
                 }
-                _ => panic!("unexpected identifier after const declaration"),
-            },
-            start_token => {
-                panic!("Unexpected token: {:?}", start_token)
+            }
+            _ => {
+                panic!("unexpected token")
             }
         }
     }
 
-    pub fn parse_value(start_token: Tokens, lexer: &mut Lexer<Tokens>) -> Node {
-        match start_token.clone() {
+    pub fn parse_value(&mut self) -> Node {
+        let val = match self.next_force() {
             Tokens::String(slice) => Value::String(slice).into_node(),
             Tokens::Char(c) => Value::Char(c).into_node(),
             Tokens::Integer(i) => Value::Integer(i).into_node(),
             Tokens::Float(f) => Value::Float(f).into_node(),
-            Tokens::Identifier(id) => match lexer.next().expect("unexpected eof") {
-                Tokens::LParen => Parser::parse_function(start_token, true, lexer),
-                _ => Value::Identifier(id).into_node(),
-            },
+            Tokens::Identifier(id) => Value::Identifier(id).into_node(),
             Tokens::Atom(slice) => Value::Atom(slice).into_node(),
 
-            _ => panic!("unknown value"),
-        }
-    }
+            _ => panic!("unknown value")
+        };
 
-    pub fn parse_function(
-        start_token: Tokens,
-        paren_done: bool,
-        lexer: &mut Lexer<Tokens>,
-    ) -> Node {
-        unimplemented!()
+        val
     }
 }

@@ -8,6 +8,8 @@ mod parser;
 
 use parser::Parser;
 
+use crate::parser::Parse;
+
 fn main() {
     file(
         &args_os()
@@ -38,7 +40,7 @@ fn file(path: &str) {
     }
 
     let now = std::time::Instant::now();
-    dbg!(Parser::parse(contents));
+    dbg!(contents.parse());
     let elapsed = now.elapsed().as_micros();
     println!("{elapsed} micros")
 }
