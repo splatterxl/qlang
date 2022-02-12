@@ -1,5 +1,5 @@
 use std::env::args_os;
-use std::io::{Read, stdout};
+use std::io::{stdout, Read};
 use std::process::exit;
 use std::sync::mpsc::channel;
 use std::thread::sleep;
@@ -34,13 +34,11 @@ fn file(path: &str) {
 
     println!("debug: read file {}", path);
 
-
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
         Ok(_) => {
             println!("debug: working...")
-
-        },
+        }
         Err(e) => {
             eprintln!("{}", e);
             exit(1);

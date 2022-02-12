@@ -1,8 +1,11 @@
 use std::iter::Peekable;
 
-use logos::{Logos, Lexer, Span, SpannedIter};
+use logos::{Lexer, Logos, Span, SpannedIter};
 
-use crate::{ast::{Expression, ImportMember, TopLevel, Value, Node}, lexer::Tokens};
+use crate::{
+    ast::{Expression, ImportMember, Node, TopLevel, Value},
+    lexer::Tokens,
+};
 
 pub trait Parse {
     fn parse(self) -> TopLevel;
@@ -44,18 +47,16 @@ impl<'a> Parser<'a> {
         while let Some(token) = self.next() {
             match token {
                 Tokens::Semicolon => {}
-                _ => {
-                    match self.parse_expression() {
-                        Expression::Import { path, members } => {
-                            top_level.imports.push(Expression::Import { path, members });
-                        }
-                        Expression::ConstDeclaration { name, value } => {
-                            top_level.consts.push(Expression::ConstDeclaration { name, value })
-                        }
+                _ => match self.parse_expression() {
+                    Expression::Import { path, members } => {
+                        top_level.imports.push(Expression::Import { path, members });
                     }
-                }
+                    Expression::ConstDeclaration { name, value } => top_level
+                        .consts
+                        .push(Expression::ConstDeclaration { name, value }),
+                },
             }
-        };
+        }
 
         top_level
     }
@@ -68,8 +69,8 @@ impl<'a> Parser<'a> {
                 self.current_token = token;
 
                 Some(self.current_token.0.clone())
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -93,9 +94,7 @@ impl<'a> Parser<'a> {
         match self.current_token.0 {
             Tokens::Import => {
                 let members = match self.next_force() {
-                    Tokens::Identifier(name) => {
-                        ImportMember::All(name)
-                    }
+                    Tokens::Identifier(name) => ImportMember::All(name),
                     Tokens::LParen => {
                         let mut members = Vec::new();
 
@@ -109,22 +108,27 @@ impl<'a> Parser<'a> {
                                         Tokens::RParen => {
                                             break;
                                         }
-                                        _ => panic!("unexpected token after import member identifier")
+                                        _ => panic!(
+                                            "unexpected token after import member identifier"
+                                        ),
                                     }
                                 }
                                 Tokens::RParen => {
                                     break;
                                 }
-                                token => panic!("unexpected token in import member list: {:?}", token),
+                                token => {
+                                    panic!("unexpected token in import member list: {:?}", token)
+                                }
                             }
-                        };
+                        }
 
                         ImportMember::Named(members)
                     }
-                    Tokens::Star => {
-                        ImportMember::AllDestructured
-                    }
-                    token => panic!("unexpected token {:?} after {:?}", token, self.current_token.0),
+                    Tokens::Star => ImportMember::AllDestructured,
+                    token => panic!(
+                        "unexpected token {:?} after {:?}",
+                        token, self.current_token.0
+                    ),
                 };
 
                 if let Tokens::From = self.next_force() {
@@ -135,36 +139,34 @@ impl<'a> Parser<'a> {
                             } else {
                                 panic!("unexpected token after import expr")
                             }
-                        } else { 
+                        } else {
                             panic!("unexpected token in import statement after From")
                         },
-                        members
+                        members,
                     }
                 } else {
                     panic!("eof after import member list")
                 }
             }
-            Tokens::Const => {
-                match self.next_force() {
-                    Tokens::Identifier(name) => {
-                        if self.next_force() != Tokens::Equals {
-                            panic!("unexpected identifier after const identifier");
-                        }
-
-                        let expr = Expression::ConstDeclaration {
-                            name: Value::Identifier(name),
-                            value: Box::new(self.parse_value())
-                        };
-
-                        if self.next_force() != Tokens::Semicolon {
-                            panic!("unexpected identifier")
-                        } else {
-                            expr
-                        }
+            Tokens::Const => match self.next_force() {
+                Tokens::Identifier(name) => {
+                    if self.next_force() != Tokens::Equals {
+                        panic!("unexpected identifier after const identifier");
                     }
-                    _ => panic!("unexpected identifier after const declaration")
+
+                    let expr = Expression::ConstDeclaration {
+                        name: Value::Identifier(name),
+                        value: Box::new(self.parse_value()),
+                    };
+
+                    if self.next_force() != Tokens::Semicolon {
+                        panic!("unexpected identifier")
+                    } else {
+                        expr
+                    }
                 }
-            }
+                _ => panic!("unexpected identifier after const declaration"),
+            },
             _ => {
                 panic!("unexpected token")
             }
@@ -180,7 +182,7 @@ impl<'a> Parser<'a> {
             Tokens::Identifier(id) => Value::Identifier(id).into_node(),
             Tokens::Atom(slice) => Value::Atom(slice).into_node(),
 
-            _ => panic!("unknown value")
+            _ => panic!("unknown value"),
         };
 
         val
