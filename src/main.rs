@@ -1,17 +1,11 @@
 use std::env::args_os;
 use std::io::{stdout, Read};
 use std::process::exit;
-use std::sync::mpsc::channel;
-use std::thread::sleep;
-use std::time::Duration;
 
 mod ast;
 mod lexer;
 mod parser;
 
-use parser::Parser;
-
-use crate::ast::TopLevel;
 use crate::parser::Parse;
 
 fn main() {

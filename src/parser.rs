@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-use logos::{Lexer, Logos, Span, SpannedIter};
+use logos::{Logos, Span, SpannedIter};
 
 use crate::{
     ast::{Expression, ImportMember, Node, TopLevel, Value},
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_value(&mut self) -> Node {
-        let val = match self.next_force() {
+        match self.next_force() {
             Tokens::String(slice) => Value::String(slice).into_node(),
             Tokens::Char(c) => Value::Char(c).into_node(),
             Tokens::Integer(i) => Value::Integer(i).into_node(),
@@ -183,8 +183,6 @@ impl<'a> Parser<'a> {
             Tokens::Atom(slice) => Value::Atom(slice).into_node(),
 
             _ => panic!("unknown value"),
-        };
-
-        val
+        }
     }
 }

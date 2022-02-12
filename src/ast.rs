@@ -41,5 +41,5 @@ pub enum Expression {
 pub enum Node {
     Expr(Expression),
     Value(Value),
-    FunctionCall { func: Value, args: Vec<Box<Node>> },
+    FunctionCall { func: Value, args: Vec<Node> },
 }
