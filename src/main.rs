@@ -1,6 +1,9 @@
 use std::env::args_os;
-use std::io::Read;
+use std::io::{Read, stdout};
 use std::process::exit;
+use std::sync::mpsc::channel;
+use std::thread::sleep;
+use std::time::Duration;
 
 mod ast;
 mod lexer;
@@ -8,6 +11,7 @@ mod parser;
 
 use parser::Parser;
 
+use crate::ast::TopLevel;
 use crate::parser::Parse;
 
 fn main() {
@@ -28,11 +32,15 @@ fn file(path: &str) {
         }
     };
 
-    println!("read file {}", path);
+    println!("debug: read file {}", path);
+
 
     let mut contents = String::new();
     match file.read_to_string(&mut contents) {
-        Ok(_) => (),
+        Ok(_) => {
+            println!("debug: working...")
+
+        },
         Err(e) => {
             eprintln!("{}", e);
             exit(1);
@@ -40,7 +48,8 @@ fn file(path: &str) {
     }
 
     let now = std::time::Instant::now();
-    dbg!(contents.parse());
+    let parsed = contents.parse();
+    dbg!(parsed);
     let elapsed = now.elapsed().as_micros();
-    println!("{elapsed} micros")
+    println!("debug: {elapsed}ms")
 }

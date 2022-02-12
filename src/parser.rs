@@ -1,15 +1,8 @@
-<<<<<<< HEAD
-use logos::{Lexer, Logos};
-=======
 use std::iter::Peekable;
 
-use logos::{Logos, Lexer, Span};
->>>>>>> 4a93263 (refactor: move lexer and current token values into instance)
+use logos::{Logos, Lexer, Span, SpannedIter};
 
-use crate::{
-    ast::{Expression, ImportMember, Node, TopLevel, Value},
-    lexer::Tokens,
-};
+use crate::{ast::{Expression, ImportMember, TopLevel, Value, Node}, lexer::Tokens};
 
 pub trait Parse {
     fn parse(self) -> TopLevel;
@@ -17,30 +10,28 @@ pub trait Parse {
 
 impl Parse for String {
     fn parse(self) -> TopLevel {
-        let mut parser = Parser::new(&self);
-        parser.parse()
+        Parser::new(&self).parse()
     }
 }
 
 impl Parse for &str {
     fn parse(self) -> TopLevel {
-        let mut parser = Parser::new(self);
-        parser.parse()
+        Parser::new(self).parse()
     }
 }
 
 pub struct Parser<'a> {
     raw: &'a str,
-    lexer: Lexer<'a, Tokens>,
-    current_token: Tokens,
+    lexer: Peekable<SpannedIter<'a, Tokens>>,
+    current_token: (Tokens, Span),
 }
 
 impl<'a> Parser<'a> {
     pub fn new(raw: &'a str) -> Self {
         Self {
             raw,
-            lexer: Tokens::lexer(&raw),
-            current_token: Tokens::Error,
+            lexer: Tokens::lexer(raw).spanned().peekable(),
+            current_token: (Tokens::Error, 0..0),
         }
     }
 
@@ -53,7 +44,7 @@ impl<'a> Parser<'a> {
         while let Some(token) = self.next() {
             match token {
                 Tokens::Semicolon => {}
-                token => {
+                _ => {
                     match self.parse_expression() {
                         Expression::Import { path, members } => {
                             top_level.imports.push(Expression::Import { path, members });
@@ -61,15 +52,10 @@ impl<'a> Parser<'a> {
                         Expression::ConstDeclaration { name, value } => {
                             top_level.consts.push(Expression::ConstDeclaration { name, value })
                         }
-                        _ => panic!("invalid expression returned")
                     }
-                    Expression::ConstDeclaration { name, value } => top_level
-                        .consts
-                        .push(Expression::ConstDeclaration { name, value }),
-                    _ => panic!("invalid expression returned"),
-                },
+                }
             }
-        }
+        };
 
         top_level
     }
@@ -81,7 +67,7 @@ impl<'a> Parser<'a> {
             Some(token) => {
                 self.current_token = token;
 
-                Some(self.current_token.clone())
+                Some(self.current_token.0.clone())
             },
             None => None
         }
@@ -91,46 +77,54 @@ impl<'a> Parser<'a> {
         self.next().expect("unexpected eof")
     }
 
+    fn token(&self) -> Tokens {
+        self.current_token.0.clone()
+    }
+
+    fn span(&self) -> Span {
+        self.current_token.1.clone()
+    }
+
+    fn slice(&self) -> &str {
+        &self.raw[self.span()]
+    }
+
     pub fn parse_expression(&mut self) -> Expression {
-        match self.current_token {
+        match self.current_token.0 {
             Tokens::Import => {
-                let members = match self.next().expect("import followed by eof") {
+                let members = match self.next_force() {
                     Tokens::Identifier(name) => {
                         ImportMember::All(name)
                     }
                     Tokens::LParen => {
                         let mut members = Vec::new();
 
-                        while let Some(next) = self.lexer.next() {
-                            match next {
+                        loop {
+                            match self.next_force() {
                                 Tokens::Identifier(slice) => {
                                     members.push(Value::Identifier(slice));
 
-                                    match self.lexer.next().expect("unexpected eof") {
+                                    match self.next_force() {
                                         Tokens::Comma => {}
                                         Tokens::RParen => {
                                             break;
                                         }
-                                        _ => panic!(
-                                            "unexpected token after import member identifier"
-                                        ),
+                                        _ => panic!("unexpected token after import member identifier")
                                     }
                                 }
                                 Tokens::RParen => {
                                     break;
                                 }
-                                token => {
-                                    panic!("unexpected token in import member list: {:?}", token)
-                                }
+                                token => panic!("unexpected token in import member list: {:?}", token),
                             }
-                        }
+                        };
 
                         ImportMember::Named(members)
                     }
                     Tokens::Star => {
                         ImportMember::AllDestructured
                     }
-                    token => panic!("unexpected token {:?} after {:?}", token, self.current_token),
+                    token => panic!("unexpected token {:?} after {:?}", token, self.current_token.0),
                 };
 
                 if let Tokens::From = self.next_force() {
@@ -141,10 +135,10 @@ impl<'a> Parser<'a> {
                             } else {
                                 panic!("unexpected token after import expr")
                             }
-                        } else {
+                        } else { 
                             panic!("unexpected token in import statement after From")
                         },
-                        members,
+                        members
                     }
                 } else {
                     panic!("eof after import member list")
@@ -168,6 +162,7 @@ impl<'a> Parser<'a> {
                             expr
                         }
                     }
+                    _ => panic!("unexpected identifier after const declaration")
                 }
             }
             _ => {
