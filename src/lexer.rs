@@ -66,10 +66,16 @@ pub enum Tokens {
     #[token("const")]
     Const,
 
+    // Position tally
+    #[regex("(\r\n|\r|\n)")]
+    Newline,
+    #[regex(r"[ \t\f]+")]
+    Whitespace,
+    #[regex("//.*")]
+    Comment,
+
     // Others
     #[error]
-    #[regex("//.*", logos::skip)]
-    #[regex("\\s*", logos::skip)]
     Error,
 }
 

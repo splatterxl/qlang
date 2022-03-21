@@ -1,17 +1,36 @@
-use std::iter::Peekable;
+use std::{iter::Peekable, fmt::Display};
+use std::process::exit;
 
 use logos::{Logos, Span, SpannedIter};
 
 use crate::{
-    ast::{Expression, ImportMember, Node, TopLevel, Value},
-    lexer::Tokens,
+    ast::{ImportMember, Node::{self, *}, TopLevel},
+    lexer::{Tokens, Slice}, debug
 };
+
+macro_rules! die {
+    () => {
+        panic!("unexpected error");
+    };
+
+    ($where:expr) => {
+        panic!("unexpected error at {}", $where);
+    };
+
+    ($where:expr, $msg:tt) => {
+        panic!("{:?}: {}", $where, $msg)
+    }; 
+
+    ($where:expr, $msg:tt, $($arg:expr),+) => {
+        panic!("{:?}: {}", $where, format!($msg, $($arg),*))
+    };
+}
 
 pub trait Parse {
     fn parse(self) -> TopLevel;
 }
 
-impl Parse for String {
+impl Parse for std::string::String {
     fn parse(self) -> TopLevel {
         Parser::new(&self).parse()
     }
@@ -27,6 +46,7 @@ pub struct Parser<'a> {
     raw: &'a str,
     lexer: Peekable<SpannedIter<'a, Tokens>>,
     current_token: (Tokens, Span),
+    pos: (usize, usize)
 }
 
 impl<'a> Parser<'a> {
@@ -35,6 +55,7 @@ impl<'a> Parser<'a> {
             raw,
             lexer: Tokens::lexer(raw).spanned().peekable(),
             current_token: (Tokens::Error, 0..0),
+            pos: (0,0)
         }
     }
 
@@ -47,13 +68,14 @@ impl<'a> Parser<'a> {
         while let Some(token) = self.next() {
             match token {
                 Tokens::Semicolon => {}
-                _ => match self.parse_expression() {
-                    Expression::Import { path, members } => {
-                        top_level.imports.push(Expression::Import { path, members });
+                _ => match self.parse_statement() {
+                    Import { path, members } => {
+                        top_level.imports.push(Import { path, members });
                     }
-                    Expression::ConstDeclaration { name, value } => top_level
+                    ConstDeclaration { name, value } => top_level
                         .consts
-                        .push(Expression::ConstDeclaration { name, value }),
+                        .push(ConstDeclaration { name, value }),
+                    _ => panic!("invalid statement returned")
                 },
             }
         }
@@ -61,36 +83,63 @@ impl<'a> Parser<'a> {
         top_level
     }
 
+    pub fn error(&self, message: impl Display) -> ! {
+        eprintln!("Error at line {}, column {}: {}", self.pos.0, self.pos.1 - self.span().len(), message);
+        exit(1)
+    }
+
+    // Lexer helpers
+
+    #[inline]
     fn next(&mut self) -> Option<Tokens> {
-        let next = self.lexer.next();
+        if let Some(next) = self.lexer.next() { 
+            self.pos.1 += next.1.len();
 
-        match next {
-            Some(token) => {
-                self.current_token = token;
-
-                Some(self.current_token.0.clone())
+            match next.0 {
+                Tokens::Whitespace => {
+                    self.next()
+                }
+                Tokens::Newline => {
+                    self.pos.0 += 1;
+                    self.pos.1 = 0;
+                    self.next()
+                }
+                Tokens::Error => {
+                    self.error("unknown token");
+                }
+                _ => {
+                    self.current_token = next;
+                    Some(self.token())
+                }
             }
-            None => None,
+        } else {
+            None
         }
     }
 
+    #[inline]
     fn next_force(&mut self) -> Tokens {
         self.next().expect("unexpected eof")
     }
 
+    #[inline(always)]
     fn token(&self) -> Tokens {
         self.current_token.0.clone()
     }
 
+    #[inline(always)]
     fn span(&self) -> Span {
         self.current_token.1.clone()
     }
 
-    fn slice(&self) -> &str {
-        &self.raw[self.span()]
+    #[inline]
+    fn peek(&mut self) -> Option<&(Tokens, Span)> {
+        self.lexer.peek()
     }
 
-    pub fn parse_expression(&mut self) -> Expression {
+    // Node parsers 
+
+    fn parse_statement(&mut self) -> Node {
         match self.current_token.0 {
             Tokens::Import => {
                 let members = match self.next_force() {
@@ -101,14 +150,14 @@ impl<'a> Parser<'a> {
                         loop {
                             match self.next_force() {
                                 Tokens::Identifier(slice) => {
-                                    members.push(Value::Identifier(slice));
+                                    members.push(Identifier(slice));
 
                                     match self.next_force() {
                                         Tokens::Comma => {}
                                         Tokens::RParen => {
                                             break;
                                         }
-                                        _ => panic!(
+                                        _ => self.error(
                                             "unexpected token after import member identifier"
                                         ),
                                     }
@@ -116,8 +165,8 @@ impl<'a> Parser<'a> {
                                 Tokens::RParen => {
                                     break;
                                 }
-                                token => {
-                                    panic!("unexpected token in import member list: {:?}", token)
+                                _ => {   
+                                    self.error("unexpected token in import member list")
                                 }
                             }
                         }
@@ -125,64 +174,76 @@ impl<'a> Parser<'a> {
                         ImportMember::Named(members)
                     }
                     Tokens::Star => ImportMember::AllDestructured,
-                    token => panic!(
+                    token => self.error(format!(
                         "unexpected token {:?} after {:?}",
                         token, self.current_token.0
-                    ),
+                    )),
                 };
 
                 if let Tokens::From = self.next_force() {
-                    Expression::Import {
-                        path: if let Tokens::String(slice) = self.next_force() {
-                            if let Tokens::Semicolon = self.next_force() {
-                                slice.trim()
-                            } else {
-                                panic!("unexpected token after import expr")
-                            }
-                        } else {
-                            panic!("unexpected token in import statement after From")
-                        },
+                    Import {
+                        path: self.resolve_import_path(),
                         members,
                     }
                 } else {
-                    panic!("eof after import member list")
+                    self.error("eof after import member list")
                 }
             }
-            Tokens::Const => match self.next_force() {
-                Tokens::Identifier(name) => {
-                    if self.next_force() != Tokens::Equals {
-                        panic!("unexpected identifier after const identifier");
-                    }
-
-                    let expr = Expression::ConstDeclaration {
-                        name: Value::Identifier(name),
-                        value: Box::new(self.parse_value()),
-                    };
-
-                    if self.next_force() != Tokens::Semicolon {
-                        panic!("unexpected identifier")
-                    } else {
-                        expr
-                    }
-                }
-                _ => panic!("unexpected identifier after const declaration"),
+            Tokens::Const => {
+                let decl = ConstDeclaration {
+                    name: self.resolve_const_name(),
+                    value: Box::new(self.parse_value())
+                };
+                self.ensure_semicolon();
+                decl
             },
             _ => {
-                panic!("unexpected token")
+                self.error("unexpected token")
             }
         }
     }
 
     pub fn parse_value(&mut self) -> Node {
         match self.next_force() {
-            Tokens::String(slice) => Value::String(slice).into_node(),
-            Tokens::Char(c) => Value::Char(c).into_node(),
-            Tokens::Integer(i) => Value::Integer(i).into_node(),
-            Tokens::Float(f) => Value::Float(f).into_node(),
-            Tokens::Identifier(id) => Value::Identifier(id).into_node(),
-            Tokens::Atom(slice) => Value::Atom(slice).into_node(),
+            Tokens::String(slice) => Node::String(slice.trim()),
+            Tokens::Char(c) => Char(c),
+            Tokens::Integer(i) => Integer(i),
+            Tokens::Float(f) => Float(f),
+            Tokens::Identifier(id) => Identifier(id),
+            Tokens::Atom(slice) => Atom(slice),
 
             _ => panic!("unknown value"),
+        }
+    }
+
+    // Guards
+
+    fn ensure_semicolon(&mut self) {
+        if self.next_force() != Tokens::Semicolon {
+            self.error("unexpected token")
+        }
+    }
+
+    // Resolvers
+
+    fn resolve_import_path(&mut self) -> Slice {
+        if let Tokens::String(path) = self.next_force() {
+            self.ensure_semicolon();
+            path.trim()
+        } else {
+            self.error("unexpected token")
+        }
+    }
+
+    fn resolve_const_name(&mut self) -> Slice {
+        if let Tokens::Identifier(name) = self.next_force() {
+            if self.next_force() != Tokens::Equals {
+                self.error("unexpected token")
+            } 
+
+            name
+        } else {
+            self.error("unexpected token")
         }
     }
 }

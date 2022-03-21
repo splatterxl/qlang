@@ -8,3 +8,10 @@ edition = "2018"
 [dependencies]
 logos = "*"
 ansi_term = "*"
+
+[dev-dependencies]
+criterion = "0.*"
+
+[[bench]]
+name = "parser"
+harness = false

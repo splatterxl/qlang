@@ -1,0 +1,20 @@
+name: Benchmarks
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  bench:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+      - name: Setup environment
+        run: node setup_bench.js
+      - name: Run on example.q
+        run: cargo run example.q
+      - name: Run on a million lines
+        run: cargo run mil.q
