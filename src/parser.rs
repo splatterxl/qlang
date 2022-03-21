@@ -1,11 +1,16 @@
-use std::{iter::Peekable, fmt::Display};
 use std::process::exit;
+use std::{fmt::Display, iter::Peekable};
 
 use logos::{Logos, Span, SpannedIter};
 
 use crate::{
-    ast::{ImportMember, Node::{self, *}, TopLevel},
-    lexer::{Tokens, Slice}, debug
+    ast::{
+        ImportMember,
+        Node::{self, *},
+        TopLevel,
+    },
+    debug,
+    lexer::{Slice, Tokens},
 };
 
 macro_rules! die {
@@ -19,7 +24,7 @@ macro_rules! die {
 
     ($where:expr, $msg:tt) => {
         panic!("{:?}: {}", $where, $msg)
-    }; 
+    };
 
     ($where:expr, $msg:tt, $($arg:expr),+) => {
         panic!("{:?}: {}", $where, format!($msg, $($arg),*))
@@ -46,7 +51,7 @@ pub struct Parser<'a> {
     raw: &'a str,
     lexer: Peekable<SpannedIter<'a, Tokens>>,
     current_token: (Tokens, Span),
-    pos: (usize, usize)
+    pos: (usize, usize),
 }
 
 impl<'a> Parser<'a> {
@@ -55,7 +60,7 @@ impl<'a> Parser<'a> {
             raw,
             lexer: Tokens::lexer(raw).spanned().peekable(),
             current_token: (Tokens::Error, 0..0),
-            pos: (0,0)
+            pos: (0, 0),
         }
     }
 
@@ -72,10 +77,10 @@ impl<'a> Parser<'a> {
                     Import { path, members } => {
                         top_level.imports.push(Import { path, members });
                     }
-                    ConstDeclaration { name, value } => top_level
-                        .consts
-                        .push(ConstDeclaration { name, value }),
-                    _ => panic!("invalid statement returned")
+                    ConstDeclaration { name, value } => {
+                        top_level.consts.push(ConstDeclaration { name, value })
+                    }
+                    _ => panic!("invalid statement returned"),
                 },
             }
         }
@@ -84,7 +89,12 @@ impl<'a> Parser<'a> {
     }
 
     pub fn error(&self, message: impl Display) -> ! {
-        eprintln!("Error at line {}, column {}: {}", self.pos.0, self.pos.1 - self.span().len(), message);
+        eprintln!(
+            "Error at line {}, column {}: {}",
+            self.pos.0,
+            self.pos.1 - self.span().len(),
+            message
+        );
         exit(1)
     }
 
@@ -92,13 +102,11 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Tokens> {
-        if let Some(next) = self.lexer.next() { 
+        if let Some(next) = self.lexer.next() {
             self.pos.1 += next.1.len();
 
             match next.0 {
-                Tokens::Whitespace => {
-                    self.next()
-                }
+                Tokens::Whitespace => self.next(),
                 Tokens::Newline => {
                     self.pos.0 += 1;
                     self.pos.1 = 0;
@@ -137,7 +145,7 @@ impl<'a> Parser<'a> {
         self.lexer.peek()
     }
 
-    // Node parsers 
+    // Node parsers
 
     fn parse_statement(&mut self) -> Node {
         match self.current_token.0 {
@@ -158,16 +166,14 @@ impl<'a> Parser<'a> {
                                             break;
                                         }
                                         _ => self.error(
-                                            "unexpected token after import member identifier"
+                                            "unexpected token after import member identifier",
                                         ),
                                     }
                                 }
                                 Tokens::RParen => {
                                     break;
                                 }
-                                _ => {   
-                                    self.error("unexpected token in import member list")
-                                }
+                                _ => self.error("unexpected token in import member list"),
                             }
                         }
 
@@ -192,14 +198,12 @@ impl<'a> Parser<'a> {
             Tokens::Const => {
                 let decl = ConstDeclaration {
                     name: self.resolve_const_name(),
-                    value: Box::new(self.parse_value())
+                    value: Box::new(self.parse_value()),
                 };
                 self.ensure_semicolon();
                 decl
-            },
-            _ => {
-                self.error("unexpected token")
             }
+            _ => self.error("unexpected token"),
         }
     }
 
@@ -239,7 +243,7 @@ impl<'a> Parser<'a> {
         if let Tokens::Identifier(name) = self.next_force() {
             if self.next_force() != Tokens::Equals {
                 self.error("unexpected token")
-            } 
+            }
 
             name
         } else {

@@ -2,15 +2,15 @@ use std::env::args;
 use std::io::{stdout, Read};
 
 mod ast;
+mod error;
 mod lexer;
 pub mod parser;
-mod error;
 
 #[macro_export]
 macro_rules! debug {
     () => {
         eprintln!("debug: [{}:{}]", file!(), line!())
-    }; 
+    };
 
     ($msg: expr) => {
         let msg = $msg;
@@ -22,7 +22,6 @@ macro_rules! debug {
     };
 }
 
-
 use crate::parser::Parse;
 
 pub fn file(path: &str) {
@@ -31,7 +30,8 @@ pub fn file(path: &str) {
     let mut file = std::fs::File::open(path).expect("unexpected error while opening file");
 
     let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("error while reading file");
+    file.read_to_string(&mut contents)
+        .expect("error while reading file");
 
     let now = std::time::Instant::now();
     let parsed = contents.parse();

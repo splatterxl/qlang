@@ -1,6 +1,6 @@
 use std::fs;
 
-use criterion::{Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use qlang::parser::Parser;
 
 fn test(input: &str) {
@@ -16,7 +16,7 @@ fn bench_all(c: &mut Criterion) {
 
     drop(bmg);
 
-    // -- 
+    // --
 
     let input = "import * from \"std\";\n".repeat(1_000_000);
 
@@ -26,7 +26,7 @@ fn bench_all(c: &mut Criterion) {
 
     drop(bmg);
 
-    // -- 
+    // --
 
     let input = "import * from \"std\";\n".repeat(6_000_000);
 
