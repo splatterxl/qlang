@@ -11,10 +11,8 @@ pub enum Tokens {
     Minus,
     #[token("*")]
     Star,
-    #[token("/")]
-    ForwardSlash,
     #[token("%")]
-    Percent,
+    Modulo,
     #[token("^")]
     Caret,
     #[token("(")]
@@ -31,13 +29,31 @@ pub enum Tokens {
     RSquare,
     #[token(";")]
     Semicolon,
+    #[token(":")]
+    Colon,
     #[token(",")]
     Comma,
     #[token("=")]
     Equals,
+    #[token("!=")]
+    NotEqual,
+    #[token(">=")]
+    GreaterThanEqual,
+    #[token("<=")]
+    LessThanEqual,
+    #[token("<")]
+    LessThan,
+    #[token(">")]
+    GreaterThan,
+    #[token("/")]
+    Slash,
+    #[token("|>")]
+    Pipe,
+    #[token("->")]
+    RArrow,
 
     // Multi-char tokens
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| Slice(lex.span()))]
+    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| Slice::from(lex.span()))]
     Identifier(Slice),
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<i32>().unwrap())]
     Integer(i32),
@@ -45,33 +61,23 @@ pub enum Tokens {
     Float(f32),
     #[regex(r"'[^']*'", |lex| lex.slice().parse::<char>().unwrap())]
     Char(char),
-    #[regex("\"(?:\\.|[^\"])*\"", |lex| Slice(lex.span()))]
+    #[regex("\"(?:\\.|[^\"])*\"", |lex| Slice::from(lex.span()))]
     String(Slice),
-    #[regex(r":[a-zA-Z_]+", |lex| Slice(lex.span()))]
-    Atom(Slice),
 
     // Keywords
-    #[token("import")]
-    Import,
-    #[token("from")]
-    From,
-    #[token("choose")]
-    Choose,
     #[regex("true|false", |lex| lex.slice().parse::<bool>().unwrap())]
     Boolean(bool),
     #[token("null")]
     Null,
-    #[token("undefined")]
-    Undefined,
-    #[token("const")]
-    Const,
+    #[token("fn")]
+    Fn,
 
     // Position tally
     #[regex("(\r\n|\r|\n)")]
     Newline,
     #[regex(r"[ \t\f]+")]
     Whitespace,
-    #[regex("//.*")]
+    #[regex("(?:#|//).*")]
     Comment,
 
     // Others
@@ -80,13 +86,23 @@ pub enum Tokens {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Slice(pub Span);
+pub struct Slice {
+    pub start: u32,
+    pub end: u32,
+}
 
 impl Slice {
     pub fn trim(self) -> Self {
-        Self(Span {
-            start: self.0.start + 1,
-            end: self.0.end - 1,
-        })
+        Self {
+            start: self.start + 1,
+            end: self.end - 1,
+        }
+    }
+
+    pub fn from(span: Span) -> Self {
+        Self {
+            start: span.start as _,
+            end: span.end as _,
+        }
     }
 }
