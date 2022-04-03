@@ -16,12 +16,8 @@ jobs:
     strategy:
       matrix:
         os:
+          # currently only this works:tm:
           - ubuntu
-          - windows 
-          - macos
-        include:
-          - os: windows 
-            ext: .exe
     steps:
       - uses: actions/checkout@v3
       - name: Cache LLVM and Clang
