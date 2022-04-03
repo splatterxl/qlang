@@ -42,7 +42,6 @@ fn run(args: Vec<String>) {
     qlang::file(file).ok();
 }
 
-
 // Metadata
 
 pub const HELP: &str = "\

@@ -3,12 +3,17 @@ use std::process::exit;
 use inkwell::{
     builder::Builder,
     context::Context,
+    execution_engine::ExecutionEngine,
     module::Module,
-    types::{FunctionType, BasicMetadataTypeEnum},
-    values::FunctionValue, AddressSpace, execution_engine::ExecutionEngine, OptimizationLevel,
+    types::{BasicMetadataTypeEnum, FunctionType},
+    values::FunctionValue,
+    AddressSpace, OptimizationLevel,
 };
 
-use crate::parser::{ast::ast::{NodeType, Node, Function}, TopLevel};
+use crate::parser::{
+    ast::ast::{Function, Node, NodeType},
+    TopLevel,
+};
 
 #[derive(Debug)]
 pub struct Codegen<'ctx> {
@@ -43,14 +48,16 @@ macro_rules! coerce_node_type {
 
 impl<'ctx> Codegen<'ctx> {
     pub fn new(context: &'ctx Context, module: Module<'ctx>) -> Self {
-        let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
+        let execution_engine = module
+            .create_jit_execution_engine(OptimizationLevel::None)
+            .unwrap();
         Self {
             context,
             module,
             builder: context.create_builder(),
             execution_engine,
         }
-    } 
+    }
 
     pub fn interpret(&self, code: &str) {
         let ast: TopLevel = code.parse().unwrap();
@@ -75,7 +82,7 @@ impl<'ctx> Codegen<'ctx> {
         let mut args: Vec<BasicMetadataTypeEnum> = Vec::new();
         let ctx = &self.context;
 
-        for arg in &func.args { 
+        for arg in &func.args {
             let arg_ty = &arg.1;
             let ty = coerce_node_type!(ctx, arg_ty);
 
@@ -86,7 +93,11 @@ impl<'ctx> Codegen<'ctx> {
             NodeType::Bool => self.context.bool_type().fn_type(&args[..], false),
             NodeType::Integer => self.context.i32_type().fn_type(&args[..], false),
             NodeType::Float => self.context.f32_type().fn_type(&args[..], false),
-            NodeType::String => self.context.i8_type().ptr_type(AddressSpace::Generic).fn_type(&args[..], false),
+            NodeType::String => self
+                .context
+                .i8_type()
+                .ptr_type(AddressSpace::Generic)
+                .fn_type(&args[..], false),
             _ => panic!("Unsupported type"),
         }
     }
@@ -101,7 +112,6 @@ impl<'ctx> Codegen<'ctx> {
         };
 
         self.builder.build_return(None);
-        
     }
 
     fn _emit_error(&self, msg: String) -> ! {

@@ -23,15 +23,17 @@ pub fn repl() {
     let module = context.create_module("qlang_repl");
     let codegen = Codegen::new(&context, module);
 
-    loop { 
+    loop {
         match prompt().as_str() {
             ".q" => break,
             ".h" => {
-                println!("\
+                println!(
+                    "\
                          .q: quit\n\
                          .h: help\n\
-                         ");
-            },
+                         "
+                );
+            }
             code => {
                 println!("{:?}", codegen.interpret(code));
             }

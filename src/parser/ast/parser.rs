@@ -14,7 +14,7 @@ use crate::parser::{
     error::{CompileError, CompileErrorBuilder, ErrorCodes},
 };
 
-use super::ast::{NodeType, Op, Function};
+use super::ast::{Function, NodeType, Op};
 
 pub struct Parser<'a> {
     raw: &'a str,
