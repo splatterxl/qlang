@@ -1,9 +1,14 @@
-use std::env::args;
-use std::io::{stdout, Read};
+use std::{
+    error::Error,
+    fs::File,
+    io::{stdin as io_stdin, Read},
+    process::{self, exit},
+    time::Instant,
+};
 
-mod ast;
-mod error;
-mod lexer;
+use crate::parser::TopLevel;
+
+mod llvm;
 pub mod parser;
 
 #[macro_export]
@@ -22,19 +27,37 @@ macro_rules! debug {
     };
 }
 
-use crate::parser::Parse;
+pub fn stdin() -> Result<TopLevel, Box<dyn Error>> {
+    let mut input = String::new();
 
-pub fn file(path: &str) {
-    debug!("open file {}", &path);
+    let mut buf = io_stdin();
 
-    let mut file = std::fs::File::open(path).expect("unexpected error while opening file");
+    buf.read_to_string(&mut input)?;
 
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .expect("error while reading file");
+    let root = parse_file(input);
 
-    let now = std::time::Instant::now();
-    let parsed = contents.parse();
+    Ok(root)
+}
+
+pub fn file(path: &str) -> Result<TopLevel, Box<dyn Error>> {
+    let mut content = String::new();
+
+    File::open(&path)?.read_to_string(&mut content)?;
+
+    let root = parse_file(content);
+
+    Ok(root)
+}
+
+fn parse_file(raw: String) -> TopLevel {
+    let now = Instant::now();
+    let parsed = raw.parse::<TopLevel>().unwrap();
     debug!(&parsed);
     debug!("done in {}ms", now.elapsed().as_millis());
+
+    parsed
+}
+
+fn link_imports(root: &TopLevel) -> Result<&TopLevel, Box<dyn Error>> {
+    Ok(root)
 }

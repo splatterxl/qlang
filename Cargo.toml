@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 logos = "*"
 ansi_term = "*"
+inkwell = { git = "https://github.com/TheDan64/inkwell.git", branch = "master", features = ["llvm13-0"] }
 
 [dev-dependencies]
 criterion = "0.*"
