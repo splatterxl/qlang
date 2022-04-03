@@ -24,9 +24,6 @@ jobs:
         uses: actions/cache@v3
         with: 
           path: target 
-          key: cargo_deps-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}   
-          restore_keys:
-            - "cargo_deps-${{ runner.os }}-"
-            - "cargo_deps-"
+          key: cargo_deps-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
       - name: Run Clippy
         run: "cargo clippy"
