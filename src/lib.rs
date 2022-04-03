@@ -39,6 +39,7 @@ pub fn stdin() -> Result<TopLevel, Box<dyn Error>> {
     Ok(root)
 }
 
+/// Parse a file into TopLevel data.
 pub fn file(path: &str) -> Result<TopLevel, Box<dyn Error>> {
     let mut content = String::new();
 
