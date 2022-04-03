@@ -5,10 +5,13 @@ use logos::{Logos, Span, SpannedIter};
 
 use crate::parser::{
     ast::{
-        ast::{Node::{self, *}, TopLevel},
+        ast::{
+            Node::{self, *},
+            TopLevel,
+        },
         lexer::Tokens,
     },
-    error::{CompileErrorBuilder, ErrorCodes, CompileError},
+    error::{CompileError, CompileErrorBuilder, ErrorCodes},
 };
 
 use super::ast::{NodeType, Op};
@@ -17,7 +20,7 @@ pub struct Parser<'a> {
     raw: &'a str,
     lexer: Peekable<SpannedIter<'a, Tokens>>,
     current_token: (Tokens, Span),
-    pos: (usize, usize)
+    pos: (usize, usize),
 }
 
 impl<'a> Parser<'a> {
@@ -26,14 +29,12 @@ impl<'a> Parser<'a> {
             raw,
             lexer: Tokens::lexer(raw).spanned().peekable(),
             current_token: (Tokens::Error, 0..0),
-            pos: (0,0)
+            pos: (0, 0),
         }
     }
 
     pub fn parse(mut self) -> TopLevel {
-        let mut top_level = TopLevel {
-            fns: Vec::new(),
-        };
+        let mut top_level = TopLevel { fns: Vec::new() };
 
         while let Some(token) = self.next() {
             match token {
@@ -47,7 +48,7 @@ impl<'a> Parser<'a> {
                         }
                         _ => panic!("parse_statement failed"),
                     }
-                },
+                }
             }
         }
 
@@ -56,10 +57,7 @@ impl<'a> Parser<'a> {
 
     pub fn error(&self, message: &str) -> ! {
         let m = message.to_string();
-        let mut e = CompileErrorBuilder::new() 
-            .code(0)
-            .message(m)
-            .build();
+        let mut e = CompileErrorBuilder::new().code(0).message(m).build();
 
         self.emit_error(&mut e);
     }
@@ -84,13 +82,11 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Tokens> {
-        if let Some(next) = self.lexer.next() { 
+        if let Some(next) = self.lexer.next() {
             self.pos.1 += next.1.len();
 
             match next.0 {
-                Tokens::Whitespace => {
-                    self.next()
-                }
+                Tokens::Whitespace => self.next(),
                 Tokens::Newline => {
                     self.pos.0 += 1;
                     self.pos.1 = 0;
@@ -111,7 +107,7 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn next_force(&mut self) -> Tokens {
-        match self.next() { 
+        match self.next() {
             Some(t) => t,
             None => {
                 let mut e = CompileErrorBuilder::new()
@@ -119,7 +115,7 @@ impl<'a> Parser<'a> {
                     .build();
 
                 self.emit_error(&mut e);
-            },
+            }
         }
     }
 
@@ -145,13 +141,13 @@ impl<'a> Parser<'a> {
         self.lexer.peek()
     }
 
-    // Node parsers 
+    // Node parsers
 
     fn parse_statement(&mut self) -> Node {
         match self.current_token.0 {
             Tokens::Fn => self.parse_fn(),
             _ => {
-                let mut e = CompileErrorBuilder::new() 
+                let mut e = CompileErrorBuilder::new()
                     .from(ErrorCodes::UnexpectedEOF)
                     .note("expected `fn` at top level")
                     .build();
@@ -167,7 +163,12 @@ impl<'a> Parser<'a> {
         let ret = self.parse_fn_ret();
         let body = Box::new(self.parse_block());
 
-        Node::Fn { name, args, body, ret }
+        Node::Fn {
+            name,
+            args,
+            body,
+            ret,
+        }
     }
 
     fn parse_fn_args(&mut self) -> Vec<(std::string::String, NodeType)> {
@@ -180,7 +181,7 @@ impl<'a> Parser<'a> {
                 Tokens::RParen => break,
                 Tokens::Identifier(_) => {
                     args.push((self.slice(), self.resolve_type()));
-                },
+                }
                 _ => self.unknown_token("function arguments"),
             }
 
@@ -208,7 +209,7 @@ impl<'a> Parser<'a> {
                 Tokens::RParen => break,
                 _ => {
                     args.push(self.parse_value());
-                },
+                }
             }
 
             match self.next_force() {
@@ -243,11 +244,11 @@ impl<'a> Parser<'a> {
         match self.token() {
             Tokens::Fn => self.parse_fn(),
             Tokens::LBrace => self.parse_block(),
-            Tokens::Identifier(_) 
-                | Tokens::Integer(_) 
-                | Tokens::Boolean(_) 
-                | Tokens::Float(_) 
-                | Tokens::Null => self.parse_expr(),
+            Tokens::Identifier(_)
+            | Tokens::Integer(_)
+            | Tokens::Boolean(_)
+            | Tokens::Float(_)
+            | Tokens::Null => self.parse_expr(),
             _ => self.unknown_token("statement or expression"),
         }
     }
@@ -259,15 +260,19 @@ impl<'a> Parser<'a> {
             a => {
                 dbg!(a);
                 let op = self.resolve_op();
-                let rhs = match self.peek().unwrap().0 { 
-                    Tokens::Semicolon => None, 
+                let rhs = match self.peek().unwrap().0 {
+                    Tokens::Semicolon => None,
                     _ => {
                         self.next_force();
                         Some(Box::new(self.parse_value()))
-                    },
+                    }
                 };
 
-                Node::Expr { lhs: Box::new(lhs), op, rhs }
+                Node::Expr {
+                    lhs: Box::new(lhs),
+                    op,
+                    rhs,
+                }
             }
         }
     }
@@ -282,10 +287,10 @@ impl<'a> Parser<'a> {
                         self.next_force();
                         let args = self.parse_call_args();
                         Call { name: id, args }
-                    },
+                    }
                     _ => Identifier(val),
                 }
-            },
+            }
             _ => unimplemented!(),
         }
     }
@@ -317,7 +322,7 @@ impl<'a> Parser<'a> {
                     .build();
 
                 self.emit_error(&mut err);
-            },
+            }
         }
     }
 
@@ -340,9 +345,9 @@ impl<'a> Parser<'a> {
                             .build();
 
                         self.emit_error(&mut err);
-                    },
+                    }
                 }
-            },
+            }
             _ => {
                 let mut err = CompileErrorBuilder::new()
                     .from(ErrorCodes::UnexpectedToken)
@@ -350,7 +355,7 @@ impl<'a> Parser<'a> {
                     .build();
 
                 self.emit_error(&mut err);
-            },
+            }
         }
     }
 
@@ -374,7 +379,7 @@ impl<'a> Parser<'a> {
                     .build();
 
                 self.emit_error(&mut err);
-            },
+            }
         }
     }
 }

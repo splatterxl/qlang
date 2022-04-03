@@ -2,7 +2,7 @@ use crate::parser::ast::lexer::Slice;
 
 #[derive(Debug)]
 pub struct TopLevel {
-    pub fns: Vec<Node>
+    pub fns: Vec<Node>,
 }
 
 #[derive(Debug)]
@@ -11,8 +11,6 @@ pub enum ImportMember {
     AllDestructured,
     Named(Vec<Node>),
 }
-
-
 
 #[derive(Debug)]
 pub enum Node {

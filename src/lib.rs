@@ -1,9 +1,15 @@
-use std::{io::{Read, stdin as io_stdin}, fs::File, time::Instant, process::{exit, self}, error::Error};
+use std::{
+    error::Error,
+    fs::File,
+    io::{stdin as io_stdin, Read},
+    process::{self, exit},
+    time::Instant,
+};
 
 use crate::parser::TopLevel;
 
-pub mod parser;
 mod llvm;
+pub mod parser;
 
 #[macro_export]
 macro_rules! debug {

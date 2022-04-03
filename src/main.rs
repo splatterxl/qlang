@@ -1,4 +1,8 @@
-use std::{process::{exit, Command}, fs::remove_dir_all, env};
+use std::{
+    env,
+    fs::remove_dir_all,
+    process::{exit, Command},
+};
 
 mod args;
 use args::parse as args;
@@ -13,7 +17,7 @@ fn main() {
     } else if flags.contains(&"version".to_string()) {
         version();
         exit(0);
-    } else if args.is_empty() { 
+    } else if args.is_empty() {
         repl();
     } else {
         match args.get(0).unwrap().as_str() {

@@ -1,27 +1,27 @@
 use std::fmt::Display;
 
-use ansi_term::{Style, Colour};
+use ansi_term::{Colour, Style};
 
 #[macro_export]
 macro_rules! parser_error {
-    () => ();
+    () => {};
     ($code:tt, $message:tt, $at:tt) => {
-      let err = CompileErrorBuilder::new() 
-        .code($code)
-        .message($message)
-        .at($at)
-        .build();
+        let err = CompileErrorBuilder::new()
+            .code($code)
+            .message($message)
+            .at($at)
+            .build();
 
-      eprintln!("{}", err);
+        eprintln!("{}", err);
     };
 }
 
 fn minus_one(i: usize) -> usize {
-  if i == 0 {
-    0
-  } else {
-    i - 1
-  }
+    if i == 0 {
+        0
+    } else {
+        i - 1
+    }
 }
 
 #[derive(Default, Debug)]
@@ -89,29 +89,40 @@ impl Display for CompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let (l, pos) = self.prepare_line();
         let p = self.fmt_at(Some(pos));
-        let s = Style::new(); 
+        let s = Style::new();
 
         f.write_str(&format!(
-                "{} [E{}] {} at {}\n\t{} {}\n\t   {} {}", 
-                &s.fg(Colour::Red).paint("Error"),
-                self.code,
-                self.message,
-                p,
-                &s.dimmed().paint("at:"), 
-                l,
-                " ".repeat(minus_one(pos.1)),
-                &s.fg(Colour::Red).paint("^")
-        )).ok();
+            "{} [E{}] {} at {}\n\t{} {}\n\t   {} {}",
+            &s.fg(Colour::Red).paint("Error"),
+            self.code,
+            self.message,
+            p,
+            &s.dimmed().paint("at:"),
+            l,
+            " ".repeat(minus_one(pos.1)),
+            &s.fg(Colour::Red).paint("^")
+        ))
+        .ok();
 
         if !self.notes.is_empty() {
             for note in &self.notes {
-                f.write_str(&format!("\n{} {}", &s.fg(Colour::Green).paint("note:"), note)).ok();
+                f.write_str(&format!(
+                    "\n{} {}",
+                    &s.fg(Colour::Green).paint("note:"),
+                    note
+                ))
+                .ok();
             }
         }
 
         if !self.hints.is_empty() {
             for hint in &self.hints {
-                f.write_str(&format!("\n{} {}", &s.fg(Colour::Blue).paint("hint:"), hint)).ok();
+                f.write_str(&format!(
+                    "\n{} {}",
+                    &s.fg(Colour::Blue).paint("hint:"),
+                    hint
+                ))
+                .ok();
             }
         }
 
@@ -120,7 +131,7 @@ impl Display for CompileError {
 }
 
 pub enum Error {
-  Compile(CompileError),
+    Compile(CompileError),
 }
 
 pub struct CompileErrorBuilder {
@@ -155,7 +166,7 @@ impl CompileErrorBuilder {
     pub fn code(mut self, code: u32) -> Self {
         self.code = code;
         self
-    } 
+    }
 
     pub fn message(mut self, message: String) -> Self {
         self.message = message;
@@ -204,19 +215,19 @@ pub enum ErrorCodes {
 }
 
 impl ErrorCodes {
-  pub fn code(&self) -> u32 {
-      *self as _
-  }
+    pub fn code(&self) -> u32 {
+        *self as _
+    }
 
-  pub fn message(&self) -> String {
-      match self {
-          ErrorCodes::UnknownError => "Unknown error".to_string(),
-          ErrorCodes::UnexpectedToken => "Unexpected token".to_string(),
-          ErrorCodes::UnexpectedEOF => "Unexpected end of file".to_string(),
-      }
-  } 
+    pub fn message(&self) -> String {
+        match self {
+            ErrorCodes::UnknownError => "Unknown error".to_string(),
+            ErrorCodes::UnexpectedToken => "Unexpected token".to_string(),
+            ErrorCodes::UnexpectedEOF => "Unexpected end of file".to_string(),
+        }
+    }
 
-  pub fn resolve(self) -> (u32, String) {
-      (self.code(), self.message())
-  }
+    pub fn resolve(self) -> (u32, String) {
+        (self.code(), self.message())
+    }
 }

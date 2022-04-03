@@ -1,11 +1,11 @@
 use std::process::exit;
 
 use inkwell::{
-    builder::Builder, 
-    module::Module, 
-    context::Context, 
-    types::BasicMetadataTypeEnum, 
-    values::{FunctionValue, BasicValueEnum}
+    builder::Builder,
+    context::Context,
+    module::Module,
+    types::BasicMetadataTypeEnum,
+    values::{BasicValueEnum, FunctionValue},
 };
 
 use crate::parser::ast::ast;
@@ -27,7 +27,7 @@ impl<'ctx> Codegen<'ctx> {
         name: String,
         args: Vec<(String, ast::NodeType)>,
         ret: ast::NodeType,
-        body: Vec<ast::Node>
+        body: Vec<ast::Node>,
     ) {
         let args_type = &self.args_to_llvm(&args)[..];
 
@@ -36,20 +36,20 @@ impl<'ctx> Codegen<'ctx> {
             ast::NodeType::Integer => {
                 let int_type = self.context.i32_type();
                 int_type.fn_type(args_type, false)
-            },
+            }
             ast::NodeType::Float => {
                 let f32_type = self.context.f32_type();
                 f32_type.fn_type(args_type, false)
-            },
+            }
             ast::NodeType::Bool => {
                 let bool_type = self.context.bool_type();
                 bool_type.fn_type(args_type, false)
-            },
+            }
             ast::NodeType::Void => {
                 let void_type = self.context.void_type();
                 void_type.fn_type(args_type, false)
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         };
 
         let function = self.module.add_function(&name, ty, None);
@@ -59,9 +59,9 @@ impl<'ctx> Codegen<'ctx> {
 
     fn build_entry(
         &self,
-        function: FunctionValue<'ctx>, 
-        args: Vec<(String, ast::NodeType)>, 
-        body: Vec<ast::Node>
+        function: FunctionValue<'ctx>,
+        args: Vec<(String, ast::NodeType)>,
+        body: Vec<ast::Node>,
     ) {
         let entry = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(entry);
@@ -73,10 +73,10 @@ impl<'ctx> Codegen<'ctx> {
             match expr {
                 ast::Node::Expr { .. } => {
                     build_expr(expr);
-                },
+                }
                 ast::Node::Stmt(stmt) => {
                     build_stmt(stmt);
-                },
+                }
                 // ignore single values
                 _ => {}
             }
@@ -94,12 +94,17 @@ impl<'ctx> Codegen<'ctx> {
                 ast::NodeType::Bool => self.context.bool_type().into(),
                 _ => self.emit_error("Invalid argument type".into()),
             });
-        };
+        }
 
         to_ret
     }
 
-    fn get_param_for_arg(&self, function: FunctionValue<'ctx>, args: &Vec<(String, ast::NodeType)>, name: String) -> BasicValueEnum {
+    fn get_param_for_arg(
+        &self,
+        function: FunctionValue<'ctx>,
+        args: &Vec<(String, ast::NodeType)>,
+        name: String,
+    ) -> BasicValueEnum {
         for (i, (arg_name, _)) in args.iter().enumerate() {
             if arg_name == &name {
                 return function.get_nth_param(i as u32).expect("invalid param");
