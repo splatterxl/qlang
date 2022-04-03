@@ -1,15 +1,26 @@
-name: Lint
+name: Build Qlang binaries
 on:
   push:
+    branches:
+      - main
     paths:
       - "**.rs"
       - "Cargo.toml"
       - "Cargo.lock"
 
 jobs:
-  Lint:
-    name: Lint code with Clippy
-    runs-on: ubuntu-latest
+  build:
+    name: Build binaries
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu
+          - windows 
+          - macos
+        include:
+          - os: windows 
+            ext: .exe
     steps:
       - uses: actions/checkout@v3
       - name: Cache LLVM and Clang
@@ -30,5 +41,11 @@ jobs:
         with: 
           path: target 
           key: cargo_deps-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-      - name: Run Clippy
-        run: "cargo clippy"
+      - name: Build Qlang 
+        run: | 
+          cargo b --release
+          mv target/release/qlang ${{ matrix.os }}${{ matrix.ext }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ matrix.os }}
+          path: ${{ matrix.os }}${{ matrix.ext }}

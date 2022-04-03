@@ -1,0 +1,28 @@
+name: add-assets
+on:
+  - release 
+
+jobs:
+  add-assets:
+    name: Add assets to release
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os:
+          - windows 
+          - ubuntu 
+          - macos 
+        include:
+          - os: windows
+            ext: .exe
+    steps:
+      - name: Pull binaries
+        uses: actions/download-artifact@v3
+        with:
+          name: build-${{ matrix.os }}-${{ github.sha }}
+      - uses: alexellis/upload-assets@0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset-paths:
+            - ${{ matrix.os }}${{ matrix.ext }}

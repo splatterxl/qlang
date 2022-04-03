@@ -1,7 +1,8 @@
 name: Format
-
 on:
-  - push
+  push:
+    paths:
+      - "**.rs"
 
 jobs:
   fmt:
