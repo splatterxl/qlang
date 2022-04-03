@@ -24,7 +24,7 @@ jobs:
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "13.0"
-          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+          cached: ${{ steps.cache-llvm.outputs.cache-hit || (matrix.os == "windows") }}
       - name: Cache Cargo dependencies
         uses: actions/cache@v3
         with: 
