@@ -14,7 +14,7 @@ use crate::parser::{
     error::{CompileError, CompileErrorBuilder, ErrorCodes},
 };
 
-use super::ast::{NodeType, Op};
+use super::ast::{NodeType, Op, Function};
 
 pub struct Parser<'a> {
     raw: &'a str,
@@ -161,14 +161,14 @@ impl<'a> Parser<'a> {
         let name = self.resolve_ident();
         let args = self.parse_fn_args();
         let ret = self.parse_fn_ret();
-        let body = Box::new(self.parse_block());
+        let body = self.parse_block();
 
-        Node::Fn {
+        Node::Fn(Box::new(Function {
             name,
             args,
             body,
             ret,
-        }
+        }))
     }
 
     fn parse_fn_args(&mut self) -> Vec<(std::string::String, NodeType)> {

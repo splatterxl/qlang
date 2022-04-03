@@ -30,13 +30,7 @@ pub enum Node {
     },
     Stmt(Box<Node>),
 
-    Fn {
-        name: String,
-        args: Vec<(String, NodeType)>,
-        /// Node::Block, to access use body.0
-        body: Box<Node>,
-        ret: NodeType,
-    },
+    Fn(Box<Function>),
     Call {
         name: String,
         args: Vec<Node>,
@@ -74,4 +68,12 @@ pub enum NodeType {
         args: Vec<NodeType>,
         ret: Box<NodeType>,
     },
+}
+
+#[derive(Debug)]
+pub struct Function {
+    pub name: String,
+    pub args: Vec<(String, NodeType)>,
+    pub body: Node,
+    pub ret: NodeType,
 }

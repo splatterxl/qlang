@@ -2,14 +2,14 @@ use std::{
     error::Error,
     fs::File,
     io::{stdin as io_stdin, Read},
-    process::{self, exit},
     time::Instant,
 };
 
 use crate::parser::TopLevel;
 
-mod llvm;
+pub mod llvm;
 pub mod parser;
+pub use inkwell;
 
 #[macro_export]
 macro_rules! debug {
@@ -56,8 +56,4 @@ fn parse_file(raw: String) -> TopLevel {
     debug!("done in {}ms", now.elapsed().as_millis());
 
     parsed
-}
-
-fn link_imports(root: &TopLevel) -> Result<&TopLevel, Box<dyn Error>> {
-    Ok(root)
 }

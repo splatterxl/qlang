@@ -1,11 +1,13 @@
 use std::{
     env,
-    fs::remove_dir_all,
     process::{exit, Command},
 };
 
 mod args;
 use args::parse as args;
+use repl::repl;
+
+mod repl;
 
 fn main() {
     header();
@@ -32,18 +34,7 @@ fn main() {
     }
 }
 
-fn repl() {
-    unimplemented!();
-}
-
 // Projects
-
-struct ProjectConfig;
-impl ProjectConfig {
-    fn read() -> Option<ProjectConfig> {
-        None
-    }
-}
 
 fn run(args: Vec<String>) {
     let file = args.get(1).unwrap();
@@ -51,9 +42,10 @@ fn run(args: Vec<String>) {
     qlang::file(file).ok();
 }
 
+
 // Metadata
 
-const HELP: &str = "\
+pub const HELP: &str = "\
 If no arguments are given, the REPL is started.
 
 Subcommands:
@@ -73,7 +65,7 @@ Options:
         Prints all debug information. \
 ";
 
-fn help(spawn: bool) {
+pub fn help(spawn: bool) {
     if spawn {
         Command::new("man")
             .args(Vec::from(["1".to_string(), "qlang".to_string()]))

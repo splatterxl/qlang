@@ -4,117 +4,107 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    types::BasicMetadataTypeEnum,
-    values::{BasicValueEnum, FunctionValue},
+    types::{FunctionType, BasicMetadataTypeEnum},
+    values::FunctionValue, AddressSpace, execution_engine::ExecutionEngine, OptimizationLevel,
 };
 
-use crate::parser::ast::ast;
+use crate::parser::{ast::ast::{NodeType, Node, Function}, TopLevel};
 
-struct Codegen<'ctx> {
+#[derive(Debug)]
+pub struct Codegen<'ctx> {
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
-    raw: String,
+    execution_engine: ExecutionEngine<'ctx>,
+}
+
+impl Clone for Codegen<'_> {
+    fn clone(&self) -> Self {
+        Self {
+            context: self.context,
+            module: self.module.clone(),
+            builder: self.context.create_builder(),
+            execution_engine: self.execution_engine.clone(),
+        }
+    }
+}
+
+macro_rules! coerce_node_type {
+    ($ctx:tt, $ty:tt) => {
+        match $ty {
+            NodeType::Bool => $ctx.bool_type().into(),
+            NodeType::Integer => $ctx.i32_type().into(),
+            NodeType::Float => $ctx.f32_type().into(),
+            NodeType::String => $ctx.i8_type().ptr_type(AddressSpace::Generic).into(),
+            _ => panic!("Unsupported type"),
+        }
+    };
 }
 
 impl<'ctx> Codegen<'ctx> {
-    pub fn add_constant(&self, name: String, value: ast::Node) {
-        unimplemented!()
+    pub fn new(context: &'ctx Context, module: Module<'ctx>) -> Self {
+        let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None).unwrap();
+        Self {
+            context,
+            module,
+            builder: context.create_builder(),
+            execution_engine,
+        }
+    } 
+
+    pub fn interpret(&self, code: &str) {
+        let ast: TopLevel = code.parse().unwrap();
+
+        for func in ast.fns {
+            self.create_function(func);
+        }
     }
 
-    pub fn add_function(
-        &'ctx self,
-        name: String,
-        args: Vec<(String, ast::NodeType)>,
-        ret: ast::NodeType,
-        body: Vec<ast::Node>,
-    ) {
-        let args_type = &self.args_to_llvm(&args)[..];
+    fn create_function(&self, func: Node) {
+        if let Node::Fn(func) = func {
+            let ty = self.type_for_function(&func);
 
-        let ty = match ret {
-            ast::NodeType::String => unimplemented!(),
-            ast::NodeType::Integer => {
-                let int_type = self.context.i32_type();
-                int_type.fn_type(args_type, false)
-            }
-            ast::NodeType::Float => {
-                let f32_type = self.context.f32_type();
-                f32_type.fn_type(args_type, false)
-            }
-            ast::NodeType::Bool => {
-                let bool_type = self.context.bool_type();
-                bool_type.fn_type(args_type, false)
-            }
-            ast::NodeType::Void => {
-                let void_type = self.context.void_type();
-                void_type.fn_type(args_type, false)
-            }
-            _ => unreachable!(),
-        };
-
-        let function = self.module.add_function(&name, ty, None);
-
-        self.build_entry(function, args, body);
+            let created = self.module.add_function(&func.name, ty, None);
+            self.create_entry(&func, created);
+        } else {
+            panic!("Expected function");
+        }
     }
 
-    fn build_entry(
-        &self,
-        function: FunctionValue<'ctx>,
-        args: Vec<(String, ast::NodeType)>,
-        body: Vec<ast::Node>,
-    ) {
-        let entry = self.context.append_basic_block(function, "entry");
+    fn type_for_function(&self, func: &Function) -> FunctionType<'ctx> {
+        let mut args: Vec<BasicMetadataTypeEnum> = Vec::new();
+        let ctx = &self.context;
+
+        for arg in &func.args { 
+            let arg_ty = &arg.1;
+            let ty = coerce_node_type!(ctx, arg_ty);
+
+            args.push(ty);
+        }
+
+        match func.ret {
+            NodeType::Bool => self.context.bool_type().fn_type(&args[..], false),
+            NodeType::Integer => self.context.i32_type().fn_type(&args[..], false),
+            NodeType::Float => self.context.f32_type().fn_type(&args[..], false),
+            NodeType::String => self.context.i8_type().ptr_type(AddressSpace::Generic).fn_type(&args[..], false),
+            _ => panic!("Unsupported type"),
+        }
+    }
+
+    fn create_entry(&self, func: &Function, created: FunctionValue<'ctx>) {
+        let entry = self.context.append_basic_block(created, "entry");
         self.builder.position_at_end(entry);
 
-        fn build_expr<T>(_: T) {}
-        fn build_stmt<T>(_: T) {}
+        let _body = match &func.body {
+            Node::Block(body) => body,
+            _ => panic!("Expected block"),
+        };
 
-        for expr in body {
-            match expr {
-                ast::Node::Expr { .. } => {
-                    build_expr(expr);
-                }
-                ast::Node::Stmt(stmt) => {
-                    build_stmt(stmt);
-                }
-                // ignore single values
-                _ => {}
-            }
-        }
+        self.builder.build_return(None);
+        
     }
 
-    fn args_to_llvm(&self, args: &Vec<(String, ast::NodeType)>) -> Vec<BasicMetadataTypeEnum> {
-        let mut to_ret: Vec<BasicMetadataTypeEnum> = Vec::new();
-
-        for arg in args {
-            to_ret.push(match arg.1 {
-                ast::NodeType::String => unimplemented!(),
-                ast::NodeType::Integer => self.context.i32_type().into(),
-                ast::NodeType::Float => self.context.f32_type().into(),
-                ast::NodeType::Bool => self.context.bool_type().into(),
-                _ => self.emit_error("Invalid argument type".into()),
-            });
-        }
-
-        to_ret
-    }
-
-    fn get_param_for_arg(
-        &self,
-        function: FunctionValue<'ctx>,
-        args: &Vec<(String, ast::NodeType)>,
-        name: String,
-    ) -> BasicValueEnum {
-        for (i, (arg_name, _)) in args.iter().enumerate() {
-            if arg_name == &name {
-                return function.get_nth_param(i as u32).expect("invalid param");
-            }
-        }
-
-        unreachable!()
-    }
-
-    fn emit_error(&self, msg: String) -> ! {
+    fn _emit_error(&self, msg: String) -> ! {
         eprintln!("{}", msg);
         exit(1)
     }
