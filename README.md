@@ -1,16 +1,12 @@
 # Qlang
 
 ## Introduction
-Qlang is a minimal, functional and JIT interpreted language built with Rust and LLVM.
 
-For those of you brave enough to actually test Qlang, please expect many breaking changes as I have no idea what style of programming language this is going to be.
+This is a simple syntax parser implementation I made in Rust. It's not functional atm, just parses the text and returns a top level object later to be consumed by LLVM.
 
-## Links
-- [Specification][spec]
-- [To-do][todo]
-- [How it works][how]
-
-<!-- links -->
-[spec]: ./doc/spec.md
-[todo]: ./doc/spec.md#todo
-[how]: ./doc/how-it-works.md
+```rs
+fn a(x: int, b: str) -> :int {
+  a(x);
+  a + b;
+}
+```
