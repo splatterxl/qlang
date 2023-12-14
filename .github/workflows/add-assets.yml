@@ -17,7 +17,7 @@ jobs:
             ext: .exe
     steps:
       - name: Pull binaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-${{ matrix.os }}-${{ github.sha }}
       - uses: alexellis/upload-assets@0
